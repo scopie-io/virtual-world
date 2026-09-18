@@ -5,7 +5,8 @@ import { App } from './ui/App';
 import { Engine, pickQuality } from './game/engine';
 import { api, ApiError } from './net/api';
 import { handleScan } from './scan';
-import { bootError, gcView, guideTarget, level, me, missions, phase, sectors, stations, toast } from './state';
+import { ensureBackend } from './demo/client';
+import { bootError, bootNote, gcView, guideTarget, level, me, missions, phase, sectors, stations, toast } from './state';
 import type { LevelData } from '../shared/types';
 
 let engine: Engine | null = null;
@@ -36,6 +37,7 @@ function poll() {
 
 async function boot() {
   try {
+    await ensureBackend((text) => (bootNote.value = text)); // real backend, or the in-browser demo when none is configured
     const [lv] = await Promise.all([
       fetch('/data/floor.json').then((r) => { if (!r.ok) throw new Error('level'); return r.json() as Promise<LevelData>; }),
       api.me(),
@@ -59,7 +61,7 @@ async function boot() {
     phase.value = 'suitup';
     api.track('boot', { q: pickQuality(), ref: document.referrer.slice(0, 80), returning: (me.value?.xp ?? 0) > 0 });
   } catch (e) {
-    bootError.value = e instanceof ApiError ? e.message : 'Could not reach the station. Check your connection.';
+    bootError.value = e instanceof ApiError || (e instanceof Error && /demo/i.test(e.message)) ? e.message : 'Could not reach the station. Check your connection.';
     phase.value = 'error';
   }
 }

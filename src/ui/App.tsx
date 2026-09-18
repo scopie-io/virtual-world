@@ -3,7 +3,8 @@ import type { Engine } from '../game/engine';
 import { api, ApiError } from '../net/api';
 import { CLASSES, CLASS_INFO, CREW_INFO, RANKS, type PlayerClass } from '../../shared/rules';
 import type { PassportInput } from '../../shared/types';
-import { atLaunchPad, bootError, currentDeck, distToGoal, goalVia, guideOn, guideTarget, level, me, mission, missions, modal, nearLift, nearStation, online, panelStation, phase, sectors, stampedSet, stationMap, toast, toasts } from '../state';
+import { DemoChip, TicketDemoHint, TourSheet } from '../demo/Tour';
+import { atLaunchPad, bootError, bootNote, currentDeck, distToGoal, goalVia, guideOn, guideTarget, level, me, mission, missions, modal, nearLift, nearStation, online, panelStation, phase, sectors, stampedSet, stationMap, toast, toasts } from '../state';
 import { DeckBanner, GcSheet, MissionsSheet, PresenceSheet } from './m3sheets';
 import { BoardsSheet, TeamSheet } from './m4sheets';
 import { Qr, Sheet, hex } from './common';
@@ -16,7 +17,7 @@ export function App({ engine }: Eng) {
   return (
     <>
       <Brand />
-      {phase.value === 'boot' && <Splash text="Docking with the station…" />}
+      {phase.value === 'boot' && <Splash text={bootNote.value} />}
       {phase.value === 'error' && <Splash text={bootError.value} error />}
       {phase.value === 'suitup' && <SuitUp engine={engine} />}
       {phase.value === 'play' && m !== 'suit' && <Hud engine={engine} />}
@@ -37,6 +38,7 @@ export function App({ engine }: Eng) {
       {m === 'missions' && <MissionsSheet />}
       {m === 'gc' && <GcSheet />}
       {m === 'presence' && <PresenceSheet engine={engine} />}
+      {m === 'tour' && <TourSheet />}
       {phase.value === 'play' && <DeckBanner engine={engine} />}
       <Toasts />
     </>
@@ -122,6 +124,7 @@ function Hud({ engine }: Eng) {
         <button class="chip" onClick={() => (modal.value = 'link')}>Link</button>
         <button class="chip" onClick={() => (modal.value = 'menu')} aria-label="Menu">☰</button>
         <span class="chip ghost">{online.value} online</span>
+        <DemoChip />
       </div>
 
       {mi && (
@@ -199,6 +202,7 @@ function Ticket() {
       <p class="lead">Show this at the <b>real</b> Booth <b>8H18B</b>. Crew scans it — <b>+500 XP</b> and your rank unlocks.</p>
       <p class="fine">Enter Hall 8 · turn left past MIHAS Merchandise · turn right at the end · second booth on the right, opposite Bernama Studio.</p>
       <a class="btn" href={m.passport.url} target="_blank" rel="noopener">Open my card page</a>
+      <TicketDemoHint />
     </div></div>
   );
 }

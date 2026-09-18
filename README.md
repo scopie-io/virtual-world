@@ -15,10 +15,39 @@ npm run dev
 - To play from a phone on the same Wi-Fi use the "Network" URL Vite prints, and start with `PUBLIC_ORIGIN=http://<that-ip>:5173` so QR codes point at it.
 
 ```bash
-npm test          # server journey tests (node:test)
+npm test          # server journey tests + the demo world (node:test)
 npm run typecheck
 npm run build     # typechecks, bundles to dist/ (floor data is committed; rebuild it with npm run data / data:all)
 ```
+
+## Demo mode — the whole game with no backend
+
+Deploy this repository to Vercel **without any environment variables** (or host `dist/` anywhere static) and the site
+runs as a self-contained demo of everything up to M4. Nothing to configure:
+
+- The pages ask `/api/healthz` first. A configured backend answers `live`. Anything else → they start the **demo backend**:
+  the *real* server (`server/app.ts` and every service, unchanged) running inside a service worker on SQLite compiled to
+  WebAssembly (`src/demo/sw.ts`). The game, `/crew.html` and `/screen.html` in the same browser share that one world, and
+  it is kept in IndexedDB, so reloads and new tabs carry on where you were.
+- The world is populated (`src/demo/sim.ts`): ~39 simulated exhibitors and visitors with a few hours of history —
+  stations online and hosted, stamps, card shares, links, three company teams, sector control, a Daily Drop, a running
+  Signal Storm, one account flagged for review — and they keep walking the decks and stamping while you play. All of it
+  goes through the same services a real player uses, so XP, the ledger, boards and trust stay consistent.
+- **Demo tour** (pink chip in the HUD) is the checklist for M1–M4, with ticks that fill in as you go. Pink "Demo" boxes
+  inside the normal sheets stand in for what one person at a desk cannot do: the code on a host's screen, a booth's
+  printed beacon, a person to Link with (both directions), visitors for the station you host, the booth crew's scan,
+  a Ground Control partner (either role), a simulated venue check-in, +1,500 XP, and **Reset the demo world**.
+- Crew console PIN in the demo: `2026` (shown on its sign-in screen). Mission Control needs that sign-in first.
+- When you later add the Turso variables (next section) and redeploy, `/api/healthz` answers `live`, the pages unregister
+  the demo worker and the site is the real thing. Force either mode with `?demo=1` / `?demo=0` (remembered per browser)
+  or build with `VITE_DEMO=1` / `0`.
+
+Try exactly what Vercel will serve, locally: `npm run demo` → http://localhost:4173 (static files, no API).
+In `npm run dev` the real local API is used; add `?demo=1` to switch that browser to the demo backend.
+
+What a demo cannot show, by nature: each browser is its own world (two phones do not meet each other), QR codes opened on
+another device land in *that* device's world, and the camera scanner, GPS gate and step tracking need a real phone and
+the real backend. The demo world is test data in your browser — nothing is sent anywhere, no leads are collected.
 
 ## Deploy to Vercel
 
@@ -42,8 +71,8 @@ database too (`DbPresence`) instead of in memory. Local development is unchanged
 
    `PUBLIC_ORIGIN` is only needed with a custom domain; otherwise QR codes use Vercel's own URL (production domain in
    production, the deployment's URL in previews).
-4. **Deploy.** If a variable is missing the site still loads and tells you which one, in plain words, on the splash screen
-   (and as JSON at `/api/me`). Add it and redeploy.
+4. **Deploy.** While any of the four variables is missing the site runs in **demo mode** (above); `/api/healthz` lists
+   which ones are missing. Add them and redeploy: the demo switches itself off.
 5. **Smoke test:** open the site on a phone → Launch → "Take me there" → claim a Passport → open `/crew.html` on another
    device, sign in with the PIN, type the 6-character ticket code → the phone should flip to *Docked* within ~4 s.
    Then `/screen.html` on the crew device for Mission Control.
@@ -177,6 +206,8 @@ The server refuses to boot in production without `MX_SECRET` and `CREW_PIN`. It 
 - Personal data never reaches other players — they see callsign, class, rank, position only.
 
 ## Verified vs not yet verified
+
+**Verified on this machine (demo mode):** 19 tests — the new one seeds the demo world on the same WebAssembly SQLite and drives it through the real HTTP app (cookie seam, presence + holograms, docking, crew login / leads / stations / beacons / Mission Control feed, simulated venue check-in, host code → stamp + Verified Contact + Daily Drop, Link-up both ways, claim → visitor → lead, a full Ground Control run, XP cache == ledger). Browser run of the **production build served as static files with no API** (`npm run demo`): first visit installs the worker and builds the world (~1 s), suit up, autopilot, Passport, simulated crew scan → Docked, host code at a cast-hosted station (+40 / +60 / +150 Daily Drop), Link-up in both directions, Ground Control with a cast astronaut walking to the marker → "Target reached", public card page and vCard served by the worker, world and session intact after reload, worker upgrade with a world-version bump. **Not done in the browser:** signing in to the crew console / Mission Control (covered by the test above through the same API, not clicked through), and any deployment on Vercel itself.
 
 **Verified on this machine (M4):** 18 tests (adds: lift rides vs refused jumps, Level 1 stamping with official names, nine-hall sector view, deck-local offers; trust arithmetic, flags, void/restore, review lockout; teams, kill switches, Daily Drop, big-screen feed carries no identities); browser run of Find → FGV Holdings on Level 1 → trail to the west lift → ride → Hall 4, the Boards sheet with the trust panel, team creation with invite code, the crew Review tab on live data, and the Mission Control screen.
 

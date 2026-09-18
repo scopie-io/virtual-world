@@ -1,0 +1,14 @@
+/* Demo mode only. */
+.demotag{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:#ff5fd2;color:#2a0622;vertical-align:1px;margin-right:6px}
+.chip.demochip{border-color:#ff5fd2;color:#ffd3f3}
+.box.demobox{border:1px dashed rgba(255,95,210,.65);background:rgba(255,95,210,.07);margin-top:10px}
+.box.demobox .btn{width:100%}.box.demobox .pills{margin:8px 0 2px;flex-wrap:wrap}
+.mono{font-variant-numeric:tabular-nums;letter-spacing:.06em;color:var(--yellow)}
+.tourh{margin:16px 0 6px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan)}
+.tour{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.tour li{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start}
+.tour .tick{width:20px;height:20px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);display:grid;place-items:center;font-size:12px;font-weight:800;margin-top:1px}
+.tour li.done .tick{background:#3ddc84;border-color:#3ddc84;color:#04220f}
+.tour strong{font-size:14px}.tour .how{font-size:12.5px;line-height:1.45;opacity:.85;margin-top:2px}
+.demobar{background:rgba(255,95,210,.12);border:1px dashed rgba(255,95,210,.65);border-radius:12px;padding:8px 12px;font-size:12.5px;line-height:1.45;margin:0 0 12px}
+.mc .demobar{position:absolute;left:50%;top:64px;transform:translateX(-50%);margin:0;z-index:5;white-space:nowrap}

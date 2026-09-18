@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
+import { TeamDemoHint } from '../demo/Tour';
 import { api, ApiError } from '../net/api';
 import { Sheet } from './common';
 import { CREW_INFO, TRUST_MIN } from '../../shared/rules';
@@ -61,6 +62,7 @@ export function TeamSheet() {
             <input maxLength={9} placeholder="Invite code" aria-label="Team invite code" autocapitalize="characters" autocomplete="off" value={code} onInput={(e) => setCode((e.target as HTMLInputElement).value.toUpperCase().replace(/\s/g, ''))} />
             <button class="btn" disabled={busy || code.length !== 8}>Join</button>
           </form>
+          <TeamDemoHint />
         </>
       )}
     </Sheet>

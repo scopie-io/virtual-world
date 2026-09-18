@@ -6,6 +6,7 @@ import { Camera, FieldPicker, Qr, Sheet, hex, useCountdown, useDeadline } from '
 import { CATALOG, SLOTS, SLOT_LABEL, isUnlocked, unlockHint, type AvatarSpec, type Option, type Slot } from '../../shared/avatar';
 import { CLASSES, CLASS_INFO, CREW_INFO, STATION_LEVELS, type ShareField } from '../../shared/rules';
 import type { Booth, Contact, HostCode, HostLead, HostStation, LinkCode, LinkPeek } from '../../shared/types';
+import { HostDemoHint, LinkDemoHint, StationDemoHint } from '../demo/Tour';
 import { guideOn, guideTarget, level, me, modal, nearStation, panelStation, pendingLink, sectors, stampedSet, stationMap, stations, toast } from '../state';
 
 type Eng = { engine: () => Engine | null };
@@ -62,6 +63,7 @@ export function StationSheet({ engine }: Eng) {
             </div>
           )}
           {st && stamped && !m.passport && <p class="fine">Claim your Passport at the Launch Pad to exchange cards with exhibitors.</p>}
+          <StationDemoHint stationId={b.id} onDigits={setDigits} />
 
           {!st && (m.passport
             ? <button class="btn big" onClick={() => (modal.value = 'claim')}>This is my booth — bring it online</button>
@@ -144,6 +146,7 @@ export function HostSheet() {
                 ))}
               </div>
               <button class="btn big" onClick={() => { panelStation.value = level.value?.booths.find((b) => b.id === s.id) ?? null; modal.value = 'claim'; }}>Edit station profile</button>
+              <HostDemoHint onLead={() => { api.hostLeads(s.id).then(setLeads, () => {}); api.hostStations().then(setMine, () => {}); }} />
             </div>
           </div>
         </>
@@ -195,6 +198,7 @@ export function LinkSheet() {
           <div class="code small">{code?.c.code.replace(/(.{4})/, '$1 ') ?? '···· ····'}</div>
           <p class="fine">Fresh code in {left}s · works once.</p>
           <div class="box left"><strong>Whoever scans you receives</strong><FieldPicker value={prefs} onChange={(f) => { setPrefs(f); void api.linkPrefs(f).catch((e) => fail(e, 'Could not save')); }} /></div>
+          <LinkDemoHint mode="show" onCode={() => {}} />
         </div>
       ) : (
         <div>
@@ -203,6 +207,7 @@ export function LinkSheet() {
             <input maxLength={9} placeholder="8-character code" aria-label="8-character Link code" autocapitalize="characters" autocomplete="off" value={typed} onInput={(e) => setTyped((e.target as HTMLInputElement).value.toUpperCase().replace(/\s/g, ''))} />
             <button class="btn" disabled={typed.length !== 8}>Look up</button>
           </form>
+          <LinkDemoHint mode="scan" onCode={(c) => { setTyped(c); void look(c); }} />
         </div>
       )}
     </Sheet>

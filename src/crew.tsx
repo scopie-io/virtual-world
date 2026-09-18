@@ -7,6 +7,8 @@ import qrcode from 'qrcode-generator';
 import './styles.css';
 import './m2.css';
 import './crew.css';
+import './demo/demo.css';
+import { demo, demoState, ensureBackend } from './demo/client';
 import type { CrewStationRow, CrewTicketView } from '../shared/types';
 
 type Res<T> = { ok: true; data: T } | { ok: false; error: string; code: string };
@@ -35,6 +37,7 @@ function Crew() {
       <header><div class="brand static"><span>lean<b>.x</b>digital</span><i /><span>Crew console</span></div>
         <nav>{(['scan', 'leads', 'stations', 'review', 'ops', 'beacons'] as const).map((t) => <button key={t} class={'chip' + (tab === t ? ' on' : '')} onClick={() => setTab(t)}>{t}</button>)}
           <button class="chip ghost" onClick={() => call('POST', '/api/crew/logout').finally(() => setAuthed(false))}>Sign out</button></nav></header>
+      {demo.value && <p class="demobar"><b>Demo mode.</b> This console talks to the demo world inside this browser — the same one the game tab is playing in. Leads, stations and the accounts under review belong to a simulated cast; your own demo player is in there too.</p>}
       {tab === 'scan' && <Scan />}{tab === 'leads' && <Leads />}{tab === 'stations' && <StationsTab />}{tab === 'review' && <ReviewTab />}{tab === 'ops' && <OpsTab />}{tab === 'beacons' && <Beacons />}
     </main>
   );
@@ -49,6 +52,7 @@ function Login({ onDone }: { onDone: () => void }) {
       <label>Crew PIN<input type="password" inputMode="numeric" autocomplete="off" value={pin} onInput={(e) => setPin((e.target as HTMLInputElement).value)} /></label>
       {err && <p class="err" role="alert">{err}</p>}
       <button class="btn primary big">Sign in</button>
+      {demo.value && <p class="fine">Demo mode · the crew PIN is <b>{demoState.value?.crewPin}</b>. On the real deployment it is the CREW_PIN you set in Vercel.</p>}
     </form></main>
   );
 }
@@ -150,4 +154,5 @@ function BeaconCard({ b }: { b: Beacon }) {
   return <div class="beacon"><div class="k">Mission X · Station beacon</div><h3>{b.name || 'Station'} <small>{b.id}</small></h3><div class="qr" ref={ref} /><p>Scan to stamp this station</p></div>;
 }
 
-render(<Crew />, document.getElementById('crew')!);
+// real backend, or the in-browser demo when none is configured — decided before the first request
+void ensureBackend().catch(() => 'live').then(() => render(<Crew />, document.getElementById('crew')!));

@@ -24,8 +24,10 @@ function publicOrigin(): string {
   return `https://${host}`;
 }
 
+const REQUIRED = ['TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN', 'MX_SECRET', 'CREW_PIN'];
+
 async function init(): Promise<Hono<never>> {
-  const missing = ['TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN', 'MX_SECRET', 'CREW_PIN'].filter((k) => !env(k));
+  const missing = REQUIRED.filter((k) => !env(k));
   if (missing.length) throw new ConfigError(`Missing environment variable${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}. Add them in Vercel → Project → Settings → Environment Variables, then redeploy.`);
   if (env('MX_SECRET')!.length < 24) throw new ConfigError('MX_SECRET must be at least 24 random characters');
 
@@ -43,6 +45,9 @@ async function init(): Promise<Hono<never>> {
 let app: Promise<Hono<never>> | null = null;
 
 export async function handle(req: Request): Promise<Response> {
+  // The pages ask this before anything else. No database configured yet → say so calmly (no error, no log noise):
+  // they start the in-browser demo instead (src/demo). With the variables set, the real app answers 'live'.
+  if (new URL(req.url).pathname === '/api/healthz') { const missing = REQUIRED.filter((k) => !env(k)); if (missing.length) return Response.json({ ok: true, data: 'demo', missing }); }
   try {
     app ??= init();
     return await (await app).fetch(req);

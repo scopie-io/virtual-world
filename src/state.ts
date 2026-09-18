@@ -2,11 +2,13 @@ import { signal, computed } from '@preact/signals';
 import type { Booth, GcView, LeaderRow, LevelData, Lift, Me, MissionsView, SectorsView, StationView, XpEvent } from '../shared/types';
 
 export type Phase = 'boot' | 'suitup' | 'play' | 'error';
-export type Modal = null | 'passport' | 'ticket' | 'board' | 'docked' | 'station' | 'claim' | 'host' | 'link' | 'contacts' | 'suit' | 'find' | 'crews' | 'menu' | 'missions' | 'gc' | 'presence' | 'team';
+export type Modal = null | 'passport' | 'ticket' | 'board' | 'docked' | 'station' | 'claim' | 'host' | 'link' | 'contacts' | 'suit' | 'find' | 'crews' | 'menu' | 'missions' | 'gc' | 'presence' | 'team' | 'tour';
 
 export const phase = signal<Phase>('boot');
 export const level = signal<LevelData | null>(null);
 export const bootError = signal('');
+/** What the splash says while the page starts. */
+export const bootNote = signal('Docking with the station…');
 export const me = signal<Me | null>(null);
 export const modal = signal<Modal>(null);
 export const nearStation = signal<Booth | null>(null);
@@ -48,7 +50,7 @@ export function toast(title: string, sub?: string, tone: Toast['tone'] = 'info',
 const ACTION_LABEL: Record<string, string> = {
   suit_up: 'Suited up', passport: 'Passport issued', dock: 'Docked at the Launch Pad', stamp: 'Stamped', hall_first: 'New sector', landmark: 'Landmark',
   verified_contact: 'Verified contact', share_station: 'Passport shared', link: 'Linked', sector_held: 'Your crew holds the sector', station_claim: 'Station online',
-  walk: 'Walking the deck', mission: 'Mission complete', ground_control: 'Ground Control run',
+  walk: 'Walking the deck', mission: 'Mission complete', ground_control: 'Ground Control run', daily_drop: 'Daily Drop', demo_boost: 'Demo boost',
 };
 export function showEvents(events: XpEvent[] | undefined) {
   for (const e of events ?? []) {

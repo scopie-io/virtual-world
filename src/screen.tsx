@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import './styles.css';
 import './m2.css';
 import './screen.css';
+import './demo/demo.css';
+import { demo, demoState, ensureBackend } from './demo/client';
 import { World, toWorld } from './game/world';
 import { Qr, hex } from './ui/common';
 import { CLASSES, CREW_INFO } from '../shared/rules';
@@ -79,7 +81,7 @@ function Screen() {
     return () => { stop = true; };
   }, []);
 
-  if (!auth) return <div class="splash"><div class="x err">✕</div><p>Sign in on the crew console in this browser first, then reload this page.</p><a class="btn" href="/crew.html">Open the crew console</a></div>;
+  if (!auth) return <div class="splash"><div class="x err">✕</div><p>Sign in on the crew console in this browser first, then reload this page.{demo.value ? ` Demo PIN: ${demoState.value?.crewPin}.` : ''}</p><a class="btn" href="/crew.html">Open the crew console</a></div>;
   const v = view, holders = v ? CLASSES.map((c) => ({ c, n: v.sectors.sectors.filter((s) => s.holder === c).length })).sort((a, b) => b.n - a.n) : [];
   return (
     <div class="mc">
@@ -114,4 +116,4 @@ function Screen() {
   );
 }
 
-render(<Screen />, document.getElementById('ui')!);
+void ensureBackend().catch(() => 'live').then(() => render(<Screen />, document.getElementById('ui')!));

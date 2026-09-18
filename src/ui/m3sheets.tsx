@@ -3,6 +3,9 @@ import type { Engine } from '../game/engine';
 import { api, ApiError } from '../net/api';
 import { Sheet, useCountdown, useDeadline } from './common';
 import type { MissionView } from '../../shared/types';
+import { demo } from '../demo/client';
+import { GcDemoHint, PresenceDemoHint } from '../demo/Tour';
+import { VENUE_DEFAULT } from '../../shared/rules';
 import { deck, gcMarkerMode, gcView, guideOn, guideTarget, me, missions, modal, toast } from '../state';
 
 type Eng = { engine: () => Engine | null };
@@ -12,6 +15,11 @@ const guideTo = (t: MissionView['target']) => { if (t) { guideTarget.value = { x
 
 /** One browser location fix → a yes/no from the server. The coordinates are not stored. */
 export async function checkInAtVenue(): Promise<boolean> {
+  if (demo.value) { // no GPS in the demo: this browser is simply "at MITEC"
+    const r = await api.venue({ lat: VENUE_DEFAULT.lat, lon: VENUE_DEFAULT.lon, acc: 12 });
+    toast('Welcome to MIHAS', 'Demo: location simulated — you now count as on site for 30 minutes', 'xp', 5000);
+    return r.onsite;
+  }
   if (!('geolocation' in navigator)) { toast('This browser has no location service', 'Scan a host code at any booth instead', 'warn', 5000); return false; }
   toast('Checking you in…', 'Allow location when your phone asks');
   try {
@@ -101,6 +109,7 @@ export function GcSheet() {
           {v?.state === 'expired' && <p class="lead">Time ran out on that run. Try again with a fresh partner.</p>}
           <p class="lead">{me.value?.onsite ? 'You are at MIHAS, so you fly as the Astronaut: a remote player will drop markers on your map. Reach the station they are steering you to and scan its code.' : 'You are remote, so you sit at Ground Control: you will see a target nobody on the floor can see. Tap the floor to drop markers and steer your astronaut to it.'}</p>
           <button class="btn primary big" disabled={busy} onClick={join}>{busy ? 'Joining…' : 'Find a partner'}</button>
+          <GcDemoHint />
         </>
       ) : v.state === 'queued' ? (
         <>
@@ -148,6 +157,7 @@ export function PresenceSheet({ engine }: Eng) {
         {d.tracking && <button class="btn big" onClick={() => toast(engine()?.calibrateAxis() ? 'Compass aligned to the hall' : 'No compass reading yet — move the phone in a figure 8', undefined, 'info', 4000)}>Calibrate: I am facing INTO the Lean X booth</button>}
         <button class={'btn big' + (m.hidden ? ' primary' : '')} disabled={busy} onClick={hide}>{m.hidden ? 'Invisible: nobody can see you' : 'Go invisible'}</button>
       </div>
+      <PresenceDemoHint />
       <p class="fine">We use one location fix to answer “is this phone at MITEC?” and keep only the yes/no. Step tracking runs on your phone, only while this page is open. Invisible players still earn XP.</p>
     </Sheet>
   );

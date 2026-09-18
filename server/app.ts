@@ -5,7 +5,10 @@ import type { Services } from './wire.js';
 import { renderPassport, renderVcard } from './passport-page.js';
 import type { ApiErr, ApiOk, XpEvent } from '../shared/types.js';
 
-export interface AppDeps extends Services { crewPin: string; publicOrigin: string; secureCookies: boolean }
+/** Where session cookies live. Default: real HTTP cookies. The in-browser demo backend (src/demo) keeps its own jar,
+ *  because a service worker is not allowed to put Set-Cookie on the responses it makes. */
+export interface CookieIO { get(c: Context, name: string): string | undefined; set(c: Context, name: string, value: string, maxAgeS: number): void }
+export interface AppDeps extends Services { crewPin: string; publicOrigin: string; secureCookies: boolean; cookies?: CookieIO }
 type Vars = { Variables: { playerId: string } };
 
 const YEAR = 365 * 24 * 3600;
@@ -27,9 +30,10 @@ function toCsv(cols: string[], rows: Record<string, unknown>[]): string {
 }
 const csvHeaders = (name: string) => ({ 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="${name}"` });
 
-export function createApp({ game, stations, social, crews, venue, director, gc, ops, signer, crewPin, publicOrigin, secureCookies }: AppDeps) {
+export function createApp({ game, stations, social, crews, venue, director, gc, ops, signer, crewPin, publicOrigin, secureCookies, cookies: cookieIO }: AppDeps) {
   const app = new Hono<Vars>();
   const cookieOpts = { httpOnly: true, sameSite: 'Lax' as const, secure: secureCookies, path: '/' };
+  const cookies: CookieIO = cookieIO ?? { get: (c, name) => getCookie(c, name), set: (c, name, value, maxAge) => setCookie(c, name, value, { ...cookieOpts, maxAge }) };
   const writeLimit = limiter(40, 60_000), pingLimit = limiter(90, 60_000), loginLimit = limiter(8, 10 * 60_000), guestLimit = limiter(30, 3600_000);
   const ip = (c: Context) => c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local';
 
@@ -46,12 +50,12 @@ export function createApp({ game, stations, social, crews, venue, director, gc, 
   /* ---- player session: signed HttpOnly cookie, guest account on first contact ---- */
   const player = new Hono<Vars>();
   player.use('*', async (c, next) => {
-    let id = (await signer.verify(getCookie(c, 'mx_s')))?.replace(/^p:/, '') ?? null;
+    let id = (await signer.verify(cookies.get(c, 'mx_s')))?.replace(/^p:/, '') ?? null;
     if (id && !(await game.exists(id))) id = null;
     if (!id) {
       if (!guestLimit(ip(c))) throw new GameError('rate', 'Too many new sessions from this network', 429);
       id = await game.createGuest();
-      setCookie(c, 'mx_s', await signer.sign(`p:${id}`), { ...cookieOpts, maxAge: YEAR });
+      cookies.set(c, 'mx_s', await signer.sign(`p:${id}`), YEAR);
     }
     c.set('playerId', id);
     if (c.req.method !== 'GET' && c.req.path !== '/api/presence' && !writeLimit(id)) throw new GameError('rate', 'Slow down a little', 429);
@@ -126,16 +130,16 @@ export function createApp({ game, stations, social, crews, venue, director, gc, 
   crew.post('/login', async (c) => {
     if (!loginLimit(ip(c))) throw new GameError('rate', 'Too many attempts — wait ten minutes', 429);
     if (String((await body(c)).pin) !== crewPin) throw new GameError('pin', 'Wrong PIN', 401);
-    setCookie(c, 'mx_crew', await signer.sign(`crew:${Date.now() + 14 * 3600_000}`), { ...cookieOpts, maxAge: 14 * 3600 });
+    cookies.set(c, 'mx_crew', await signer.sign(`crew:${Date.now() + 14 * 3600_000}`), 14 * 3600);
     return c.json({ ok: true, data: null });
   });
   crew.use('*', async (c, next) => {
-    const p = await signer.verify(getCookie(c, 'mx_crew'));
+    const p = await signer.verify(cookies.get(c, 'mx_crew'));
     if (!p?.startsWith('crew:') || Number(p.slice(5)) < Date.now()) throw new GameError('crew_auth', 'Crew sign-in required', 401);
     await next();
   });
   crew.get('/check', (c) => c.json({ ok: true, data: null }));
-  crew.post('/logout', (c) => { setCookie(c, 'mx_crew', '', { ...cookieOpts, maxAge: 0 }); return c.json({ ok: true, data: null }); });
+  crew.post('/logout', (c) => { cookies.set(c, 'mx_crew', '', 0); return c.json({ ok: true, data: null }); });
   crew.get('/ticket', async (c) => c.json({ ok: true, data: await game.crewTicket(c.req.query('t') ?? '') }));
   crew.post('/dock', async (c) => c.json({ ok: true, data: await game.crewDock(String((await body(c)).t ?? '')) }));
   crew.get('/beacons', async (c) => c.json({ ok: true, data: await game.beacons() }));
@@ -160,6 +164,9 @@ export function createApp({ game, stations, social, crews, venue, director, gc, 
   });
   crew.post('/stations/status', async (c) => { const b = await body(c); await stations.crewSetStatus(String(b.stationId), String(b.status)); return c.json({ ok: true, data: null }); });
 
+  // The pages ask this first: a healthy answer means "real backend"; anything else and they start the in-browser demo.
+  // Registered before the player routes so that asking does not create a guest account.
+  app.get('/api/healthz', (c) => c.json({ ok: true, data: 'live' }));
   app.route('/api/crew', crew);
   app.route('/api', player);
 
