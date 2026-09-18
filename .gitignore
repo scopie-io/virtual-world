@@ -1,0 +1,16 @@
+node_modules
+dist
+# local SQLite database (player data) — never commit
+data/
+*.db
+*.db-shm
+*.db-wal
+# secrets
+.env
+.env.*
+!.env.example
+# tooling
+.vercel
+.vercel-check
+*.log
+.DS_Store

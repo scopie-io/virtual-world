@@ -1,0 +1,40 @@
+{
+  "name": "mission-x",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "data": "node tools/build-floor.mjs",
+    "data:all": "node tools/fetch-exhibitors.mjs && node tools/build-decks.mjs && node tools/build-floor.mjs",
+    "dev": "concurrently -k -n api,web -c cyan,yellow \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "node --watch --import tsx server/node.ts",
+    "dev:web": "vite",
+    "build": "tsc --noEmit && vite build",
+    "start": "tsx server/node.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test server/game.test.ts server/m2.test.ts server/m3.test.ts server/m4.test.ts src/game/pdr.test.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@libsql/client": "^0.18.0",
+    "@preact/signals": "^1.3.1",
+    "hono": "^4.6.14",
+    "jsqr": "^1.4.0",
+    "preact": "^10.25.4",
+    "qrcode-generator": "^1.4.4",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.3",
+    "@types/node": "^22.10.2",
+    "@types/three": "^0.170.0",
+    "concurrently": "^9.1.0",
+    "pdfjs-dist": "^4.10.38",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
