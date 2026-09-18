@@ -1,7 +1,7 @@
 node_modules
 dist
 # local SQLite database (player data) — never commit
-data/
+/data/
 *.db
 *.db-shm
 *.db-wal

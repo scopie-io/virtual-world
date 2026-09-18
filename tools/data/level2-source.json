@@ -1,0 +1,3782 @@
+{
+  "project": "MIHAS 2026",
+  "level": 2,
+  "halls": [
+    5,
+    6,
+    7,
+    8
+  ],
+  "source": "MIHAS 2026 Floor Plan V226.pdf, page 2",
+  "coordinate_system": {
+    "units": "metres",
+    "origin": "source PDF lower-left",
+    "calibration": "standard 3m x 3m booth pitch; 8 PDF points = 3m"
+  },
+  "standard_booth_size_m": [
+    3.0,
+    3.0
+  ],
+  "booth_count_detected": 466,
+  "booths": [
+    {
+      "booth_id": "8D36",
+      "x_m": 22.234,
+      "y_m": 90.997,
+      "source_x_pt": 59.29,
+      "source_y_pt": 242.659,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D01",
+      "x_m": 25.26,
+      "y_m": 90.997,
+      "source_x_pt": 67.361,
+      "source_y_pt": 242.659,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7H36",
+      "x_m": 47.675,
+      "y_m": 91.001,
+      "source_x_pt": 127.133,
+      "source_y_pt": 242.668,
+      "nearby_text": "3m 2.5m"
+    },
+    {
+      "booth_id": "7H01",
+      "x_m": 50.701,
+      "y_m": 91.001,
+      "source_x_pt": 135.202,
+      "source_y_pt": 242.668,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7G36",
+      "x_m": 56.218,
+      "y_m": 91.001,
+      "source_x_pt": 149.914,
+      "source_y_pt": 242.668,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7G01",
+      "x_m": 59.244,
+      "y_m": 91.001,
+      "source_x_pt": 157.985,
+      "source_y_pt": 242.668,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D35",
+      "x_m": 22.314,
+      "y_m": 88.394,
+      "source_x_pt": 59.503,
+      "source_y_pt": 235.719,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D02",
+      "x_m": 25.3,
+      "y_m": 88.394,
+      "source_x_pt": 67.468,
+      "source_y_pt": 235.719,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C35",
+      "x_m": 30.674,
+      "y_m": 88.394,
+      "source_x_pt": 81.797,
+      "source_y_pt": 235.719,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C02",
+      "x_m": 33.659,
+      "y_m": 88.394,
+      "source_x_pt": 89.758,
+      "source_y_pt": 235.719,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C36",
+      "x_m": 39.114,
+      "y_m": 88.265,
+      "source_x_pt": 104.305,
+      "source_y_pt": 235.373,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C01",
+      "x_m": 42.179,
+      "y_m": 88.265,
+      "source_x_pt": 112.476,
+      "source_y_pt": 235.373,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7H35",
+      "x_m": 47.595,
+      "y_m": 88.442,
+      "source_x_pt": 126.92,
+      "source_y_pt": 235.844,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7H02",
+      "x_m": 50.581,
+      "y_m": 88.442,
+      "source_x_pt": 134.882,
+      "source_y_pt": 235.844,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7G35",
+      "x_m": 56.218,
+      "y_m": 88.528,
+      "source_x_pt": 149.914,
+      "source_y_pt": 236.074,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7G02",
+      "x_m": 59.204,
+      "y_m": 88.528,
+      "source_x_pt": 157.878,
+      "source_y_pt": 236.074,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6G31",
+      "x_m": 133.173,
+      "y_m": 87.747,
+      "source_x_pt": 355.129,
+      "source_y_pt": 233.993,
+      "nearby_text": "CaliforniaRaisin Walnut"
+    },
+    {
+      "booth_id": "6G06",
+      "x_m": 136.119,
+      "y_m": 87.747,
+      "source_x_pt": 362.985,
+      "source_y_pt": 233.993,
+      "nearby_text": "CaliforniaRaisin"
+    },
+    {
+      "booth_id": "6F31",
+      "x_m": 141.743,
+      "y_m": 87.747,
+      "source_x_pt": 377.98,
+      "source_y_pt": 233.993,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6F06",
+      "x_m": 144.649,
+      "y_m": 87.747,
+      "source_x_pt": 385.731,
+      "source_y_pt": 233.993,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6E28",
+      "x_m": 150.246,
+      "y_m": 87.747,
+      "source_x_pt": 400.657,
+      "source_y_pt": 233.993,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6E05",
+      "x_m": 153.192,
+      "y_m": 87.747,
+      "source_x_pt": 408.512,
+      "source_y_pt": 233.993,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6D29",
+      "x_m": 158.789,
+      "y_m": 87.747,
+      "source_x_pt": 423.437,
+      "source_y_pt": 233.993,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6D06",
+      "x_m": 161.775,
+      "y_m": 87.747,
+      "source_x_pt": 431.399,
+      "source_y_pt": 233.993,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6C31",
+      "x_m": 167.388,
+      "y_m": 87.747,
+      "source_x_pt": 446.369,
+      "source_y_pt": 233.993,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6C06",
+      "x_m": 170.294,
+      "y_m": 87.747,
+      "source_x_pt": 454.118,
+      "source_y_pt": 233.993,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D34",
+      "x_m": 22.314,
+      "y_m": 85.662,
+      "source_x_pt": 59.503,
+      "source_y_pt": 228.433,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D03",
+      "x_m": 25.26,
+      "y_m": 85.662,
+      "source_x_pt": 67.361,
+      "source_y_pt": 228.433,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C34",
+      "x_m": 30.634,
+      "y_m": 85.705,
+      "source_x_pt": 81.691,
+      "source_y_pt": 228.546,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C03",
+      "x_m": 33.619,
+      "y_m": 85.705,
+      "source_x_pt": 89.651,
+      "source_y_pt": 228.546,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8B01",
+      "x_m": 39.171,
+      "y_m": 85.577,
+      "source_x_pt": 104.455,
+      "source_y_pt": 228.205,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7J01",
+      "x_m": 42.168,
+      "y_m": 85.579,
+      "source_x_pt": 112.448,
+      "source_y_pt": 228.21,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7H34",
+      "x_m": 47.675,
+      "y_m": 85.752,
+      "source_x_pt": 127.133,
+      "source_y_pt": 228.672,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7H03",
+      "x_m": 50.661,
+      "y_m": 85.752,
+      "source_x_pt": 135.095,
+      "source_y_pt": 228.672,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7G34",
+      "x_m": 56.178,
+      "y_m": 85.752,
+      "source_x_pt": 149.807,
+      "source_y_pt": 228.672,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7G03",
+      "x_m": 59.164,
+      "y_m": 85.752,
+      "source_x_pt": 157.772,
+      "source_y_pt": 228.672,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6G30",
+      "x_m": 133.133,
+      "y_m": 84.494,
+      "source_x_pt": 355.023,
+      "source_y_pt": 225.318,
+      "nearby_text": "USDA"
+    },
+    {
+      "booth_id": "6G07",
+      "x_m": 136.119,
+      "y_m": 84.494,
+      "source_x_pt": 362.985,
+      "source_y_pt": 225.318,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6F30",
+      "x_m": 141.663,
+      "y_m": 84.494,
+      "source_x_pt": 377.769,
+      "source_y_pt": 225.318,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6F07",
+      "x_m": 144.649,
+      "y_m": 84.494,
+      "source_x_pt": 385.731,
+      "source_y_pt": 225.318,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6E27",
+      "x_m": 150.246,
+      "y_m": 84.494,
+      "source_x_pt": 400.657,
+      "source_y_pt": 225.318,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6E06",
+      "x_m": 153.192,
+      "y_m": 84.494,
+      "source_x_pt": 408.512,
+      "source_y_pt": 225.318,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6D28",
+      "x_m": 158.789,
+      "y_m": 84.494,
+      "source_x_pt": 423.437,
+      "source_y_pt": 225.318,
+      "nearby_text": "egarotS"
+    },
+    {
+      "booth_id": "6D07",
+      "x_m": 161.775,
+      "y_m": 84.494,
+      "source_x_pt": 431.399,
+      "source_y_pt": 225.318,
+      "nearby_text": "egarotS mooR"
+    },
+    {
+      "booth_id": "6C30",
+      "x_m": 167.308,
+      "y_m": 84.494,
+      "source_x_pt": 446.155,
+      "source_y_pt": 225.318,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6C07",
+      "x_m": 170.294,
+      "y_m": 84.494,
+      "source_x_pt": 454.118,
+      "source_y_pt": 225.318,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D33",
+      "x_m": 22.234,
+      "y_m": 83.06,
+      "source_x_pt": 59.29,
+      "source_y_pt": 221.493,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D04",
+      "x_m": 25.22,
+      "y_m": 83.06,
+      "source_x_pt": 67.254,
+      "source_y_pt": 221.493,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C33",
+      "x_m": 30.674,
+      "y_m": 83.059,
+      "source_x_pt": 81.797,
+      "source_y_pt": 221.49,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C04",
+      "x_m": 33.659,
+      "y_m": 83.059,
+      "source_x_pt": 89.758,
+      "source_y_pt": 221.49,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8B02",
+      "x_m": 39.171,
+      "y_m": 83.061,
+      "source_x_pt": 104.455,
+      "source_y_pt": 221.495,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7J02",
+      "x_m": 42.168,
+      "y_m": 83.062,
+      "source_x_pt": 112.448,
+      "source_y_pt": 221.5,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7H33",
+      "x_m": 47.635,
+      "y_m": 83.15,
+      "source_x_pt": 127.026,
+      "source_y_pt": 221.732,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7H04",
+      "x_m": 50.621,
+      "y_m": 83.15,
+      "source_x_pt": 134.989,
+      "source_y_pt": 221.732,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7G33",
+      "x_m": 56.218,
+      "y_m": 83.062,
+      "source_x_pt": 149.914,
+      "source_y_pt": 221.5,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7G04",
+      "x_m": 59.204,
+      "y_m": 83.062,
+      "source_x_pt": 157.878,
+      "source_y_pt": 221.5,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6G29",
+      "x_m": 133.133,
+      "y_m": 81.241,
+      "source_x_pt": 355.023,
+      "source_y_pt": 216.643,
+      "nearby_text": "USDA"
+    },
+    {
+      "booth_id": "6G08",
+      "x_m": 136.119,
+      "y_m": 81.241,
+      "source_x_pt": 362.985,
+      "source_y_pt": 216.643,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6F29",
+      "x_m": 141.663,
+      "y_m": 81.241,
+      "source_x_pt": 377.769,
+      "source_y_pt": 216.643,
+      "nearby_text": "PTPTN"
+    },
+    {
+      "booth_id": "6F08",
+      "x_m": 144.649,
+      "y_m": 81.241,
+      "source_x_pt": 385.731,
+      "source_y_pt": 216.643,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6E26",
+      "x_m": 150.246,
+      "y_m": 81.241,
+      "source_x_pt": 400.657,
+      "source_y_pt": 216.643,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6E07",
+      "x_m": 153.192,
+      "y_m": 81.241,
+      "source_x_pt": 408.512,
+      "source_y_pt": 216.643,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6D27",
+      "x_m": 158.789,
+      "y_m": 81.241,
+      "source_x_pt": 423.437,
+      "source_y_pt": 216.643,
+      "nearby_text": "egarotS"
+    },
+    {
+      "booth_id": "6D08",
+      "x_m": 161.735,
+      "y_m": 81.241,
+      "source_x_pt": 431.292,
+      "source_y_pt": 216.643,
+      "nearby_text": "egarotS mooR"
+    },
+    {
+      "booth_id": "6C29",
+      "x_m": 167.308,
+      "y_m": 81.241,
+      "source_x_pt": 446.155,
+      "source_y_pt": 216.643,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6C08",
+      "x_m": 170.294,
+      "y_m": 81.241,
+      "source_x_pt": 454.118,
+      "source_y_pt": 216.643,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8B03",
+      "x_m": 39.171,
+      "y_m": 80.241,
+      "source_x_pt": 104.455,
+      "source_y_pt": 213.977,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7J03",
+      "x_m": 42.128,
+      "y_m": 80.243,
+      "source_x_pt": 112.341,
+      "source_y_pt": 213.982,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D32A",
+      "x_m": 22.193,
+      "y_m": 77.725,
+      "source_x_pt": 59.182,
+      "source_y_pt": 207.267,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D05B",
+      "x_m": 25.219,
+      "y_m": 77.725,
+      "source_x_pt": 67.251,
+      "source_y_pt": 207.267,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C32A",
+      "x_m": 30.673,
+      "y_m": 77.724,
+      "source_x_pt": 81.794,
+      "source_y_pt": 207.264,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C05B",
+      "x_m": 33.698,
+      "y_m": 77.724,
+      "source_x_pt": 89.861,
+      "source_y_pt": 207.264,
+      "nearby_text": "7431"
+    },
+    {
+      "booth_id": "8B04",
+      "x_m": 39.25,
+      "y_m": 77.639,
+      "source_x_pt": 104.666,
+      "source_y_pt": 207.037,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7J04",
+      "x_m": 42.207,
+      "y_m": 77.641,
+      "source_x_pt": 112.552,
+      "source_y_pt": 207.041,
+      "nearby_text": "2.5m 3m"
+    },
+    {
+      "booth_id": "7H32A",
+      "x_m": 47.634,
+      "y_m": 77.901,
+      "source_x_pt": 127.023,
+      "source_y_pt": 207.736,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7H05B",
+      "x_m": 50.62,
+      "y_m": 77.901,
+      "source_x_pt": 134.985,
+      "source_y_pt": 207.736,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7G32A",
+      "x_m": 56.177,
+      "y_m": 77.771,
+      "source_x_pt": 149.806,
+      "source_y_pt": 207.39,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7G05B",
+      "x_m": 59.203,
+      "y_m": 77.771,
+      "source_x_pt": 157.875,
+      "source_y_pt": 207.39,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6G28",
+      "x_m": 133.133,
+      "y_m": 77.988,
+      "source_x_pt": 355.023,
+      "source_y_pt": 207.968,
+      "nearby_text": "Ask Me!"
+    },
+    {
+      "booth_id": "6G09",
+      "x_m": 136.119,
+      "y_m": 77.988,
+      "source_x_pt": 362.985,
+      "source_y_pt": 207.968,
+      "nearby_text": "California Milk"
+    },
+    {
+      "booth_id": "6F28",
+      "x_m": 141.663,
+      "y_m": 77.988,
+      "source_x_pt": 377.769,
+      "source_y_pt": 207.968,
+      "nearby_text": "University"
+    },
+    {
+      "booth_id": "6F09",
+      "x_m": 144.649,
+      "y_m": 77.988,
+      "source_x_pt": 385.731,
+      "source_y_pt": 207.968,
+      "nearby_text": "University"
+    },
+    {
+      "booth_id": "6E25",
+      "x_m": 150.206,
+      "y_m": 77.988,
+      "source_x_pt": 400.55,
+      "source_y_pt": 207.968,
+      "nearby_text": "NGO"
+    },
+    {
+      "booth_id": "6E08",
+      "x_m": 153.192,
+      "y_m": 77.988,
+      "source_x_pt": 408.512,
+      "source_y_pt": 207.968,
+      "nearby_text": "NGO"
+    },
+    {
+      "booth_id": "6D26",
+      "x_m": 158.789,
+      "y_m": 77.988,
+      "source_x_pt": 423.437,
+      "source_y_pt": 207.968,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6D09",
+      "x_m": 161.735,
+      "y_m": 77.988,
+      "source_x_pt": 431.292,
+      "source_y_pt": 207.968,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6C28",
+      "x_m": 167.308,
+      "y_m": 77.988,
+      "source_x_pt": 446.155,
+      "source_y_pt": 207.968,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6C09",
+      "x_m": 170.294,
+      "y_m": 77.988,
+      "source_x_pt": 454.118,
+      "source_y_pt": 207.968,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8F24",
+      "x_m": 30.667,
+      "y_m": 72.043,
+      "source_x_pt": 81.779,
+      "source_y_pt": 192.114,
+      "nearby_text": "L L M 1 2 sqm"
+    },
+    {
+      "booth_id": "8E27",
+      "x_m": 39.13,
+      "y_m": 72.043,
+      "source_x_pt": 104.346,
+      "source_y_pt": 192.114,
+      "nearby_text": "1422 @HalalT M"
+    },
+    {
+      "booth_id": "8E10",
+      "x_m": 42.116,
+      "y_m": 72.043,
+      "source_x_pt": 112.309,
+      "source_y_pt": 192.114,
+      "nearby_text": "a r g e t M e d"
+    },
+    {
+      "booth_id": "8D27",
+      "x_m": 47.673,
+      "y_m": 72.043,
+      "source_x_pt": 127.128,
+      "source_y_pt": 192.114,
+      "nearby_text": "BHEBIHAS"
+    },
+    {
+      "booth_id": "8D10",
+      "x_m": 50.659,
+      "y_m": 72.043,
+      "source_x_pt": 135.091,
+      "source_y_pt": 192.114,
+      "nearby_text": "BHEBIHAS"
+    },
+    {
+      "booth_id": "8C27",
+      "x_m": 56.232,
+      "y_m": 72.042,
+      "source_x_pt": 149.952,
+      "source_y_pt": 192.111,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C10",
+      "x_m": 59.178,
+      "y_m": 72.042,
+      "source_x_pt": 157.807,
+      "source_y_pt": 192.111,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7H27",
+      "x_m": 73.313,
+      "y_m": 72.045,
+      "source_x_pt": 195.5,
+      "source_y_pt": 192.121,
+      "nearby_text": "/Embassy Ukraine"
+    },
+    {
+      "booth_id": "7H10",
+      "x_m": 76.298,
+      "y_m": 72.045,
+      "source_x_pt": 203.463,
+      "source_y_pt": 192.121,
+      "nearby_text": "/Embassy Peru"
+    },
+    {
+      "booth_id": "7G27",
+      "x_m": 81.856,
+      "y_m": 72.046,
+      "source_x_pt": 218.283,
+      "source_y_pt": 192.123,
+      "nearby_text": "An Khang"
+    },
+    {
+      "booth_id": "7G10",
+      "x_m": 84.842,
+      "y_m": 72.046,
+      "source_x_pt": 226.246,
+      "source_y_pt": 192.123,
+      "nearby_text": "Khang g l ad esh"
+    },
+    {
+      "booth_id": "6G27",
+      "x_m": 133.133,
+      "y_m": 72.046,
+      "source_x_pt": 355.023,
+      "source_y_pt": 192.123,
+      "nearby_text": "Saga S h Wagyu C o m"
+    },
+    {
+      "booth_id": "6G10",
+      "x_m": 136.119,
+      "y_m": 72.046,
+      "source_x_pt": 362.985,
+      "source_y_pt": 192.123,
+      "nearby_text": "S h an d o n g C"
+    },
+    {
+      "booth_id": "6F27",
+      "x_m": 141.663,
+      "y_m": 72.046,
+      "source_x_pt": 377.769,
+      "source_y_pt": 192.123,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6F10",
+      "x_m": 144.649,
+      "y_m": 72.046,
+      "source_x_pt": 385.731,
+      "source_y_pt": 192.123,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6E24",
+      "x_m": 150.246,
+      "y_m": 72.046,
+      "source_x_pt": 400.657,
+      "source_y_pt": 192.123,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6D10",
+      "x_m": 161.775,
+      "y_m": 72.046,
+      "source_x_pt": 431.399,
+      "source_y_pt": 192.123,
+      "nearby_text": "noitcefnoC ynohpmyS"
+    },
+    {
+      "booth_id": "8F23",
+      "x_m": 30.667,
+      "y_m": 68.79,
+      "source_x_pt": 81.779,
+      "source_y_pt": 183.439,
+      "nearby_text": "sqm BFIM aideM"
+    },
+    {
+      "booth_id": "8F09",
+      "x_m": 33.653,
+      "y_m": 68.79,
+      "source_x_pt": 89.741,
+      "source_y_pt": 183.439,
+      "nearby_text": "rognaleS aideM"
+    },
+    {
+      "booth_id": "8E26",
+      "x_m": 39.13,
+      "y_m": 68.79,
+      "source_x_pt": 104.346,
+      "source_y_pt": 183.439,
+      "nearby_text": "OICBusiness"
+    },
+    {
+      "booth_id": "8E11",
+      "x_m": 42.156,
+      "y_m": 68.79,
+      "source_x_pt": 112.415,
+      "source_y_pt": 183.439,
+      "nearby_text": "ShangHai OICBusiness Media"
+    },
+    {
+      "booth_id": "8D26",
+      "x_m": 47.673,
+      "y_m": 68.79,
+      "source_x_pt": 127.128,
+      "source_y_pt": 183.439,
+      "nearby_text": "T360"
+    },
+    {
+      "booth_id": "8D11",
+      "x_m": 50.699,
+      "y_m": 68.79,
+      "source_x_pt": 135.197,
+      "source_y_pt": 183.439,
+      "nearby_text": "GHB"
+    },
+    {
+      "booth_id": "8C26",
+      "x_m": 56.232,
+      "y_m": 68.789,
+      "source_x_pt": 149.952,
+      "source_y_pt": 183.436,
+      "nearby_text": "Universal Relience"
+    },
+    {
+      "booth_id": "8C11",
+      "x_m": 59.258,
+      "y_m": 68.789,
+      "source_x_pt": 158.021,
+      "source_y_pt": 183.436,
+      "nearby_text": "Universal Relience"
+    },
+    {
+      "booth_id": "8B09",
+      "x_m": 64.768,
+      "y_m": 68.79,
+      "source_x_pt": 172.716,
+      "source_y_pt": 183.441,
+      "nearby_text": "Paguba"
+    },
+    {
+      "booth_id": "7J09",
+      "x_m": 67.726,
+      "y_m": 68.792,
+      "source_x_pt": 180.602,
+      "source_y_pt": 183.446,
+      "nearby_text": "Uganda"
+    },
+    {
+      "booth_id": "7H26",
+      "x_m": 73.313,
+      "y_m": 68.792,
+      "source_x_pt": 195.5,
+      "source_y_pt": 183.446,
+      "nearby_text": "Afgha nistanChamebr"
+    },
+    {
+      "booth_id": "7H11",
+      "x_m": 76.338,
+      "y_m": 68.792,
+      "source_x_pt": 203.569,
+      "source_y_pt": 183.446,
+      "nearby_text": "France nistanChamebr"
+    },
+    {
+      "booth_id": "7G26",
+      "x_m": 81.856,
+      "y_m": 68.793,
+      "source_x_pt": 218.283,
+      "source_y_pt": 183.449,
+      "nearby_text": "rBan S t e ll a S p"
+    },
+    {
+      "booth_id": "7G11",
+      "x_m": 84.882,
+      "y_m": 68.793,
+      "source_x_pt": 226.352,
+      "source_y_pt": 183.449,
+      "nearby_text": "g l ad esh rBan H i g"
+    },
+    {
+      "booth_id": "6G26",
+      "x_m": 133.133,
+      "y_m": 68.793,
+      "source_x_pt": 355.023,
+      "source_y_pt": 183.449,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6G11",
+      "x_m": 136.159,
+      "y_m": 68.793,
+      "source_x_pt": 363.091,
+      "source_y_pt": 183.449,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6F26",
+      "x_m": 141.663,
+      "y_m": 68.793,
+      "source_x_pt": 377.769,
+      "source_y_pt": 183.449,
+      "nearby_text": "Exim"
+    },
+    {
+      "booth_id": "6F11",
+      "x_m": 144.728,
+      "y_m": 68.793,
+      "source_x_pt": 385.942,
+      "source_y_pt": 183.449,
+      "nearby_text": "Exim"
+    },
+    {
+      "booth_id": "6E23",
+      "x_m": 150.246,
+      "y_m": 68.793,
+      "source_x_pt": 400.657,
+      "source_y_pt": 183.449,
+      "nearby_text": "WINT"
+    },
+    {
+      "booth_id": "6E09",
+      "x_m": 153.192,
+      "y_m": 68.793,
+      "source_x_pt": 408.512,
+      "source_y_pt": 183.449,
+      "nearby_text": "WINT"
+    },
+    {
+      "booth_id": "6D25",
+      "x_m": 158.789,
+      "y_m": 68.793,
+      "source_x_pt": 423.437,
+      "source_y_pt": 183.449,
+      "nearby_text": "B e i i n g D i"
+    },
+    {
+      "booth_id": "6D11",
+      "x_m": 161.815,
+      "y_m": 68.793,
+      "source_x_pt": 431.506,
+      "source_y_pt": 183.449,
+      "nearby_text": "noitcefnoC ynohpmyS g"
+    },
+    {
+      "booth_id": "8F22",
+      "x_m": 30.667,
+      "y_m": 65.536,
+      "source_x_pt": 81.779,
+      "source_y_pt": 174.764,
+      "nearby_text": "BFIM aideM"
+    },
+    {
+      "booth_id": "8F10",
+      "x_m": 33.653,
+      "y_m": 65.536,
+      "source_x_pt": 89.741,
+      "source_y_pt": 174.764,
+      "nearby_text": "rognaleS aideM"
+    },
+    {
+      "booth_id": "8E25",
+      "x_m": 39.13,
+      "y_m": 65.536,
+      "source_x_pt": 104.346,
+      "source_y_pt": 174.764,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8E12",
+      "x_m": 42.116,
+      "y_m": 65.536,
+      "source_x_pt": 112.309,
+      "source_y_pt": 174.764,
+      "nearby_text": "Media EXPO PRO"
+    },
+    {
+      "booth_id": "8D25",
+      "x_m": 47.673,
+      "y_m": 65.536,
+      "source_x_pt": 127.128,
+      "source_y_pt": 174.764,
+      "nearby_text": "MRCA"
+    },
+    {
+      "booth_id": "8D12",
+      "x_m": 50.659,
+      "y_m": 65.536,
+      "source_x_pt": 135.091,
+      "source_y_pt": 174.764,
+      "nearby_text": "Sure Expo"
+    },
+    {
+      "booth_id": "8C25",
+      "x_m": 56.192,
+      "y_m": 65.536,
+      "source_x_pt": 149.845,
+      "source_y_pt": 174.761,
+      "nearby_text": "Relience"
+    },
+    {
+      "booth_id": "8C12",
+      "x_m": 59.218,
+      "y_m": 65.536,
+      "source_x_pt": 157.914,
+      "source_y_pt": 174.761,
+      "nearby_text": "Relience"
+    },
+    {
+      "booth_id": "8B10",
+      "x_m": 64.768,
+      "y_m": 65.537,
+      "source_x_pt": 172.716,
+      "source_y_pt": 174.766,
+      "nearby_text": "impres sive Semarak"
+    },
+    {
+      "booth_id": "7J10",
+      "x_m": 67.726,
+      "y_m": 65.539,
+      "source_x_pt": 180.602,
+      "source_y_pt": 174.771,
+      "nearby_text": "KT Ultimate"
+    },
+    {
+      "booth_id": "7H25",
+      "x_m": 73.313,
+      "y_m": 65.539,
+      "source_x_pt": 195.5,
+      "source_y_pt": 174.771,
+      "nearby_text": "VietnamChamber"
+    },
+    {
+      "booth_id": "7H12",
+      "x_m": 76.298,
+      "y_m": 65.539,
+      "source_x_pt": 203.463,
+      "source_y_pt": 174.771,
+      "nearby_text": "Belgiun VietnamChamber"
+    },
+    {
+      "booth_id": "7G25",
+      "x_m": 81.856,
+      "y_m": 65.54,
+      "source_x_pt": 218.283,
+      "source_y_pt": 174.773,
+      "nearby_text": "Bangladesh"
+    },
+    {
+      "booth_id": "7G12",
+      "x_m": 84.842,
+      "y_m": 65.54,
+      "source_x_pt": 226.246,
+      "source_y_pt": 174.773,
+      "nearby_text": "Commission Bangladesh"
+    },
+    {
+      "booth_id": "6G25",
+      "x_m": 133.133,
+      "y_m": 65.54,
+      "source_x_pt": 355.023,
+      "source_y_pt": 174.773,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6G12",
+      "x_m": 136.119,
+      "y_m": 65.54,
+      "source_x_pt": 362.985,
+      "source_y_pt": 174.773,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6F25",
+      "x_m": 141.663,
+      "y_m": 65.54,
+      "source_x_pt": 377.769,
+      "source_y_pt": 174.773,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6F12",
+      "x_m": 144.649,
+      "y_m": 65.54,
+      "source_x_pt": 385.731,
+      "source_y_pt": 174.773,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6E22",
+      "x_m": 150.246,
+      "y_m": 65.54,
+      "source_x_pt": 400.657,
+      "source_y_pt": 174.773,
+      "nearby_text": "WINT EXPO 81"
+    },
+    {
+      "booth_id": "6E10",
+      "x_m": 153.192,
+      "y_m": 65.54,
+      "source_x_pt": 408.512,
+      "source_y_pt": 174.773,
+      "nearby_text": "WINT EXPO sqm"
+    },
+    {
+      "booth_id": "6D24",
+      "x_m": 158.789,
+      "y_m": 65.54,
+      "source_x_pt": 423.437,
+      "source_y_pt": 174.773,
+      "nearby_text": "Jiyuan Bao"
+    },
+    {
+      "booth_id": "6D12",
+      "x_m": 161.775,
+      "y_m": 65.54,
+      "source_x_pt": 431.399,
+      "source_y_pt": 174.773,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8F21",
+      "x_m": 30.747,
+      "y_m": 62.283,
+      "source_x_pt": 81.992,
+      "source_y_pt": 166.089,
+      "nearby_text": "MHB"
+    },
+    {
+      "booth_id": "8F11",
+      "x_m": 33.733,
+      "y_m": 62.283,
+      "source_x_pt": 89.954,
+      "source_y_pt": 166.089,
+      "nearby_text": "prociP"
+    },
+    {
+      "booth_id": "8E24",
+      "x_m": 39.13,
+      "y_m": 62.283,
+      "source_x_pt": 104.346,
+      "source_y_pt": 166.089,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8E13",
+      "x_m": 42.116,
+      "y_m": 62.283,
+      "source_x_pt": 112.309,
+      "source_y_pt": 166.089,
+      "nearby_text": "PRO Newpages Network"
+    },
+    {
+      "booth_id": "8D24",
+      "x_m": 47.673,
+      "y_m": 62.283,
+      "source_x_pt": 127.128,
+      "source_y_pt": 166.089,
+      "nearby_text": "MBKMM Nashmir"
+    },
+    {
+      "booth_id": "8D13",
+      "x_m": 50.659,
+      "y_m": 62.283,
+      "source_x_pt": 135.091,
+      "source_y_pt": 166.089,
+      "nearby_text": "ATTA Muslim Pasir"
+    },
+    {
+      "booth_id": "8C24",
+      "x_m": 56.232,
+      "y_m": 62.282,
+      "source_x_pt": 149.952,
+      "source_y_pt": 166.086,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C13",
+      "x_m": 59.178,
+      "y_m": 62.282,
+      "source_x_pt": 157.807,
+      "source_y_pt": 166.086,
+      "nearby_text": "BBC"
+    },
+    {
+      "booth_id": "8B11",
+      "x_m": 64.808,
+      "y_m": 62.284,
+      "source_x_pt": 172.823,
+      "source_y_pt": 166.091,
+      "nearby_text": "Semarak Energy Resource"
+    },
+    {
+      "booth_id": "7J11",
+      "x_m": 67.806,
+      "y_m": 62.286,
+      "source_x_pt": 180.815,
+      "source_y_pt": 166.096,
+      "nearby_text": "ogalpikaM nibraH"
+    },
+    {
+      "booth_id": "7H24",
+      "x_m": 73.313,
+      "y_m": 62.286,
+      "source_x_pt": 195.5,
+      "source_y_pt": 166.096,
+      "nearby_text": "Iran"
+    },
+    {
+      "booth_id": "7H13",
+      "x_m": 76.298,
+      "y_m": 62.286,
+      "source_x_pt": 203.463,
+      "source_y_pt": 166.096,
+      "nearby_text": "NZ Chamber"
+    },
+    {
+      "booth_id": "7G24",
+      "x_m": 81.856,
+      "y_m": 62.287,
+      "source_x_pt": 218.283,
+      "source_y_pt": 166.099,
+      "nearby_text": "Bangladesh High Commission"
+    },
+    {
+      "booth_id": "7G13",
+      "x_m": 84.842,
+      "y_m": 62.287,
+      "source_x_pt": 226.246,
+      "source_y_pt": 166.099,
+      "nearby_text": "Bangladesh High Commission"
+    },
+    {
+      "booth_id": "6G24",
+      "x_m": 133.133,
+      "y_m": 62.287,
+      "source_x_pt": 355.023,
+      "source_y_pt": 166.099,
+      "nearby_text": "Starzen"
+    },
+    {
+      "booth_id": "6G13",
+      "x_m": 136.119,
+      "y_m": 62.287,
+      "source_x_pt": 362.985,
+      "source_y_pt": 166.099,
+      "nearby_text": "napaJ"
+    },
+    {
+      "booth_id": "6F24",
+      "x_m": 141.663,
+      "y_m": 62.287,
+      "source_x_pt": 377.769,
+      "source_y_pt": 166.099,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6F13",
+      "x_m": 144.649,
+      "y_m": 62.287,
+      "source_x_pt": 385.731,
+      "source_y_pt": 166.099,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6E21",
+      "x_m": 150.286,
+      "y_m": 62.287,
+      "source_x_pt": 400.763,
+      "source_y_pt": 166.099,
+      "nearby_text": "81"
+    },
+    {
+      "booth_id": "6E11",
+      "x_m": 153.272,
+      "y_m": 62.287,
+      "source_x_pt": 408.726,
+      "source_y_pt": 166.099,
+      "nearby_text": "sqm"
+    },
+    {
+      "booth_id": "6D23",
+      "x_m": 158.789,
+      "y_m": 62.287,
+      "source_x_pt": 423.437,
+      "source_y_pt": 166.099,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6D13",
+      "x_m": 161.775,
+      "y_m": 62.287,
+      "source_x_pt": 431.399,
+      "source_y_pt": 166.099,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8F20",
+      "x_m": 30.667,
+      "y_m": 59.03,
+      "source_x_pt": 81.779,
+      "source_y_pt": 157.414,
+      "nearby_text": "MIMF"
+    },
+    {
+      "booth_id": "8F12",
+      "x_m": 33.653,
+      "y_m": 59.03,
+      "source_x_pt": 89.741,
+      "source_y_pt": 157.414,
+      "nearby_text": "prociP"
+    },
+    {
+      "booth_id": "8E23",
+      "x_m": 39.13,
+      "y_m": 59.03,
+      "source_x_pt": 104.346,
+      "source_y_pt": 157.414,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8E14",
+      "x_m": 42.116,
+      "y_m": 59.03,
+      "source_x_pt": 112.309,
+      "source_y_pt": 157.414,
+      "nearby_text": "Bioalpha"
+    },
+    {
+      "booth_id": "8D23",
+      "x_m": 47.673,
+      "y_m": 59.03,
+      "source_x_pt": 127.128,
+      "source_y_pt": 157.414,
+      "nearby_text": "Nashmir Capsule"
+    },
+    {
+      "booth_id": "8D14",
+      "x_m": 50.659,
+      "y_m": 59.03,
+      "source_x_pt": 135.091,
+      "source_y_pt": 157.414,
+      "nearby_text": "Pasir Mas Indo"
+    },
+    {
+      "booth_id": "8C23",
+      "x_m": 56.232,
+      "y_m": 59.029,
+      "source_x_pt": 149.952,
+      "source_y_pt": 157.411,
+      "nearby_text": "Unison"
+    },
+    {
+      "booth_id": "8C14",
+      "x_m": 59.178,
+      "y_m": 59.029,
+      "source_x_pt": 157.807,
+      "source_y_pt": 157.411,
+      "nearby_text": "Bio Tropics"
+    },
+    {
+      "booth_id": "8B12",
+      "x_m": 64.768,
+      "y_m": 59.031,
+      "source_x_pt": 172.716,
+      "source_y_pt": 157.416,
+      "nearby_text": "Asia Nexus"
+    },
+    {
+      "booth_id": "7J12",
+      "x_m": 67.726,
+      "y_m": 59.033,
+      "source_x_pt": 180.602,
+      "source_y_pt": 157.421,
+      "nearby_text": "ogalpikaM nibraH"
+    },
+    {
+      "booth_id": "7H23",
+      "x_m": 73.313,
+      "y_m": 59.033,
+      "source_x_pt": 195.5,
+      "source_y_pt": 157.421,
+      "nearby_text": "CambodiPaalestine"
+    },
+    {
+      "booth_id": "7H14",
+      "x_m": 76.298,
+      "y_m": 59.033,
+      "source_x_pt": 203.463,
+      "source_y_pt": 157.421,
+      "nearby_text": "CambodiPaalestine"
+    },
+    {
+      "booth_id": "7G23",
+      "x_m": 81.856,
+      "y_m": 59.034,
+      "source_x_pt": 218.283,
+      "source_y_pt": 157.424,
+      "nearby_text": "Commission"
+    },
+    {
+      "booth_id": "7G14",
+      "x_m": 84.842,
+      "y_m": 59.034,
+      "source_x_pt": 226.246,
+      "source_y_pt": 157.424,
+      "nearby_text": "Commission"
+    },
+    {
+      "booth_id": "6G23",
+      "x_m": 133.133,
+      "y_m": 59.034,
+      "source_x_pt": 355.023,
+      "source_y_pt": 157.424,
+      "nearby_text": "Flatec"
+    },
+    {
+      "booth_id": "6G14",
+      "x_m": 136.119,
+      "y_m": 59.034,
+      "source_x_pt": 362.985,
+      "source_y_pt": 157.424,
+      "nearby_text": "naF"
+    },
+    {
+      "booth_id": "6F23",
+      "x_m": 141.663,
+      "y_m": 59.034,
+      "source_x_pt": 377.769,
+      "source_y_pt": 157.424,
+      "nearby_text": "El Waha"
+    },
+    {
+      "booth_id": "6E16",
+      "x_m": 144.673,
+      "y_m": 59.034,
+      "source_x_pt": 385.794,
+      "source_y_pt": 157.424,
+      "nearby_text": "Le Bourne"
+    },
+    {
+      "booth_id": "6E20",
+      "x_m": 150.246,
+      "y_m": 59.034,
+      "source_x_pt": 400.657,
+      "source_y_pt": 157.424,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6E12",
+      "x_m": 153.192,
+      "y_m": 59.034,
+      "source_x_pt": 408.512,
+      "source_y_pt": 157.424,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6D22",
+      "x_m": 158.789,
+      "y_m": 59.034,
+      "source_x_pt": 423.437,
+      "source_y_pt": 157.424,
+      "nearby_text": "GM Services"
+    },
+    {
+      "booth_id": "6D14",
+      "x_m": 161.775,
+      "y_m": 59.034,
+      "source_x_pt": 431.399,
+      "source_y_pt": 157.424,
+      "nearby_text": "Shokran Pay"
+    },
+    {
+      "booth_id": "8F19",
+      "x_m": 30.667,
+      "y_m": 53.087,
+      "source_x_pt": 81.779,
+      "source_y_pt": 141.567,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8E22",
+      "x_m": 39.13,
+      "y_m": 53.087,
+      "source_x_pt": 104.346,
+      "source_y_pt": 141.567,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8E15",
+      "x_m": 42.116,
+      "y_m": 53.087,
+      "source_x_pt": 112.309,
+      "source_y_pt": 141.567,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D22",
+      "x_m": 47.673,
+      "y_m": 53.087,
+      "source_x_pt": 127.128,
+      "source_y_pt": 141.567,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D15",
+      "x_m": 50.659,
+      "y_m": 53.087,
+      "source_x_pt": 135.091,
+      "source_y_pt": 141.567,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C22",
+      "x_m": 56.232,
+      "y_m": 53.087,
+      "source_x_pt": 149.952,
+      "source_y_pt": 141.564,
+      "nearby_text": "Henan Makiplago"
+    },
+    {
+      "booth_id": "8C15",
+      "x_m": 59.178,
+      "y_m": 53.087,
+      "source_x_pt": 157.807,
+      "source_y_pt": 141.564,
+      "nearby_text": "Beau Olam"
+    },
+    {
+      "booth_id": "7H22",
+      "x_m": 73.313,
+      "y_m": 53.09,
+      "source_x_pt": 195.5,
+      "source_y_pt": 141.574,
+      "nearby_text": "Bank Indonesia"
+    },
+    {
+      "booth_id": "7H15",
+      "x_m": 76.298,
+      "y_m": 53.09,
+      "source_x_pt": 203.463,
+      "source_y_pt": 141.574,
+      "nearby_text": "Bank Indonesia"
+    },
+    {
+      "booth_id": "7G22",
+      "x_m": 81.856,
+      "y_m": 53.091,
+      "source_x_pt": 218.283,
+      "source_y_pt": 141.576,
+      "nearby_text": "LPEI"
+    },
+    {
+      "booth_id": "7G15",
+      "x_m": 84.842,
+      "y_m": 53.091,
+      "source_x_pt": 226.246,
+      "source_y_pt": 141.576,
+      "nearby_text": "Halal Indo"
+    },
+    {
+      "booth_id": "6G22",
+      "x_m": 133.133,
+      "y_m": 53.091,
+      "source_x_pt": 355.023,
+      "source_y_pt": 141.576,
+      "nearby_text": "S t a n d a r d"
+    },
+    {
+      "booth_id": "6G15",
+      "x_m": 136.119,
+      "y_m": 53.091,
+      "source_x_pt": 362.985,
+      "source_y_pt": 141.576,
+      "nearby_text": "a r d e d"
+    },
+    {
+      "booth_id": "6F22",
+      "x_m": 141.703,
+      "y_m": 53.091,
+      "source_x_pt": 377.873,
+      "source_y_pt": 141.576,
+      "nearby_text": "Photo Booth"
+    },
+    {
+      "booth_id": "6F15",
+      "x_m": 144.649,
+      "y_m": 53.091,
+      "source_x_pt": 385.731,
+      "source_y_pt": 141.576,
+      "nearby_text": "Photo Booth"
+    },
+    {
+      "booth_id": "6E19",
+      "x_m": 150.246,
+      "y_m": 53.091,
+      "source_x_pt": 400.657,
+      "source_y_pt": 141.576,
+      "nearby_text": "Bescho Beijing"
+    },
+    {
+      "booth_id": "6D15",
+      "x_m": 161.735,
+      "y_m": 53.091,
+      "source_x_pt": 431.292,
+      "source_y_pt": 141.576,
+      "nearby_text": "S in a r A z a m"
+    },
+    {
+      "booth_id": "8F18",
+      "x_m": 30.667,
+      "y_m": 49.834,
+      "source_x_pt": 81.779,
+      "source_y_pt": 132.892,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8F13",
+      "x_m": 33.653,
+      "y_m": 49.834,
+      "source_x_pt": 89.741,
+      "source_y_pt": 132.892,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8E21",
+      "x_m": 39.17,
+      "y_m": 49.834,
+      "source_x_pt": 104.453,
+      "source_y_pt": 132.892,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8E16",
+      "x_m": 42.116,
+      "y_m": 49.834,
+      "source_x_pt": 112.309,
+      "source_y_pt": 132.892,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D21",
+      "x_m": 47.713,
+      "y_m": 49.834,
+      "source_x_pt": 127.235,
+      "source_y_pt": 132.892,
+      "nearby_text": "Tasneem"
+    },
+    {
+      "booth_id": "8D16",
+      "x_m": 50.659,
+      "y_m": 49.834,
+      "source_x_pt": 135.091,
+      "source_y_pt": 132.892,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C21",
+      "x_m": 56.272,
+      "y_m": 49.833,
+      "source_x_pt": 150.058,
+      "source_y_pt": 132.889,
+      "nearby_text": "Henan Makiplago YY"
+    },
+    {
+      "booth_id": "8C16",
+      "x_m": 59.178,
+      "y_m": 49.833,
+      "source_x_pt": 157.807,
+      "source_y_pt": 132.889,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8B13",
+      "x_m": 64.768,
+      "y_m": 49.835,
+      "source_x_pt": 172.716,
+      "source_y_pt": 132.894,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7J13",
+      "x_m": 67.726,
+      "y_m": 49.837,
+      "source_x_pt": 180.602,
+      "source_y_pt": 132.899,
+      "nearby_text": "IKD"
+    },
+    {
+      "booth_id": "7H21",
+      "x_m": 73.353,
+      "y_m": 49.837,
+      "source_x_pt": 195.607,
+      "source_y_pt": 132.899,
+      "nearby_text": "Indonesia Singapura"
+    },
+    {
+      "booth_id": "7H16",
+      "x_m": 76.298,
+      "y_m": 49.837,
+      "source_x_pt": 203.463,
+      "source_y_pt": 132.899,
+      "nearby_text": "Indonesia Singapura"
+    },
+    {
+      "booth_id": "7G21",
+      "x_m": 81.896,
+      "y_m": 49.838,
+      "source_x_pt": 218.39,
+      "source_y_pt": 132.901,
+      "nearby_text": "LPH"
+    },
+    {
+      "booth_id": "7G16",
+      "x_m": 84.842,
+      "y_m": 49.838,
+      "source_x_pt": 226.246,
+      "source_y_pt": 132.901,
+      "nearby_text": "Trad expo"
+    },
+    {
+      "booth_id": "6G21",
+      "x_m": 133.173,
+      "y_m": 49.838,
+      "source_x_pt": 355.129,
+      "source_y_pt": 132.901,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6G16",
+      "x_m": 136.119,
+      "y_m": 49.838,
+      "source_x_pt": 362.985,
+      "source_y_pt": 132.901,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6F21",
+      "x_m": 141.743,
+      "y_m": 49.838,
+      "source_x_pt": 377.98,
+      "source_y_pt": 132.901,
+      "nearby_text": "Photo Booth"
+    },
+    {
+      "booth_id": "6F16",
+      "x_m": 144.649,
+      "y_m": 49.838,
+      "source_x_pt": 385.731,
+      "source_y_pt": 132.901,
+      "nearby_text": "Photo Booth"
+    },
+    {
+      "booth_id": "6E18",
+      "x_m": 150.246,
+      "y_m": 49.838,
+      "source_x_pt": 400.657,
+      "source_y_pt": 132.901,
+      "nearby_text": "Beijing Yinqich eng"
+    },
+    {
+      "booth_id": "6A17",
+      "x_m": 153.192,
+      "y_m": 49.838,
+      "source_x_pt": 408.512,
+      "source_y_pt": 132.901,
+      "nearby_text": "4.92FT Bank Nasional"
+    },
+    {
+      "booth_id": "6D21",
+      "x_m": 158.829,
+      "y_m": 49.838,
+      "source_x_pt": 423.543,
+      "source_y_pt": 132.901,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6D16",
+      "x_m": 161.775,
+      "y_m": 49.838,
+      "source_x_pt": 431.399,
+      "source_y_pt": 132.901,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8F17",
+      "x_m": 30.667,
+      "y_m": 46.581,
+      "source_x_pt": 81.779,
+      "source_y_pt": 124.217,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8F14",
+      "x_m": 33.653,
+      "y_m": 46.581,
+      "source_x_pt": 89.741,
+      "source_y_pt": 124.217,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8E20",
+      "x_m": 39.13,
+      "y_m": 46.581,
+      "source_x_pt": 104.346,
+      "source_y_pt": 124.217,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8E17",
+      "x_m": 42.116,
+      "y_m": 46.581,
+      "source_x_pt": 112.309,
+      "source_y_pt": 124.217,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D20",
+      "x_m": 47.673,
+      "y_m": 46.581,
+      "source_x_pt": 127.128,
+      "source_y_pt": 124.217,
+      "nearby_text": "Big Caring"
+    },
+    {
+      "booth_id": "8D17",
+      "x_m": 50.659,
+      "y_m": 46.581,
+      "source_x_pt": 135.091,
+      "source_y_pt": 124.217,
+      "nearby_text": "Big Caring"
+    },
+    {
+      "booth_id": "8C20",
+      "x_m": 56.232,
+      "y_m": 46.58,
+      "source_x_pt": 149.952,
+      "source_y_pt": 124.214,
+      "nearby_text": "Mana Vlar Hong"
+    },
+    {
+      "booth_id": "8C17",
+      "x_m": 59.178,
+      "y_m": 46.58,
+      "source_x_pt": 157.807,
+      "source_y_pt": 124.214,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8B14",
+      "x_m": 64.768,
+      "y_m": 46.582,
+      "source_x_pt": 172.716,
+      "source_y_pt": 124.219,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7J14",
+      "x_m": 67.726,
+      "y_m": 46.584,
+      "source_x_pt": 180.602,
+      "source_y_pt": 124.224,
+      "nearby_text": "IKD"
+    },
+    {
+      "booth_id": "7H20",
+      "x_m": 73.313,
+      "y_m": 46.584,
+      "source_x_pt": 195.5,
+      "source_y_pt": 124.224,
+      "nearby_text": "Trade Indonesia"
+    },
+    {
+      "booth_id": "7H17",
+      "x_m": 76.298,
+      "y_m": 46.584,
+      "source_x_pt": 203.463,
+      "source_y_pt": 124.224,
+      "nearby_text": "Attache Indonesia"
+    },
+    {
+      "booth_id": "7G20",
+      "x_m": 81.856,
+      "y_m": 46.585,
+      "source_x_pt": 218.283,
+      "source_y_pt": 124.226,
+      "nearby_text": "PT Pelindo"
+    },
+    {
+      "booth_id": "7G17",
+      "x_m": 84.842,
+      "y_m": 46.585,
+      "source_x_pt": 226.246,
+      "source_y_pt": 124.226,
+      "nearby_text": "D-8 HEI"
+    },
+    {
+      "booth_id": "6G20",
+      "x_m": 133.133,
+      "y_m": 46.585,
+      "source_x_pt": 355.023,
+      "source_y_pt": 124.226,
+      "nearby_text": "knaB"
+    },
+    {
+      "booth_id": "6G17",
+      "x_m": 136.119,
+      "y_m": 46.585,
+      "source_x_pt": 362.985,
+      "source_y_pt": 124.226,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6F20",
+      "x_m": 141.663,
+      "y_m": 46.585,
+      "source_x_pt": 377.769,
+      "source_y_pt": 124.226,
+      "nearby_text": "ecneulF oG"
+    },
+    {
+      "booth_id": "6F17",
+      "x_m": 144.649,
+      "y_m": 46.585,
+      "source_x_pt": 385.731,
+      "source_y_pt": 124.226,
+      "nearby_text": "MJK gnitekraM ecneulF"
+    },
+    {
+      "booth_id": "6E17",
+      "x_m": 150.246,
+      "y_m": 46.585,
+      "source_x_pt": 400.657,
+      "source_y_pt": 124.226,
+      "nearby_text": "Guarana"
+    },
+    {
+      "booth_id": "6A18",
+      "x_m": 153.192,
+      "y_m": 46.585,
+      "source_x_pt": 408.512,
+      "source_y_pt": 124.226,
+      "nearby_text": "Nasional Simpanan"
+    },
+    {
+      "booth_id": "6D20",
+      "x_m": 158.789,
+      "y_m": 46.585,
+      "source_x_pt": 423.437,
+      "source_y_pt": 124.226,
+      "nearby_text": "Pakistan"
+    },
+    {
+      "booth_id": "6D17",
+      "x_m": 161.775,
+      "y_m": 46.585,
+      "source_x_pt": 431.399,
+      "source_y_pt": 124.226,
+      "nearby_text": "Pakistan"
+    },
+    {
+      "booth_id": "8F16",
+      "x_m": 30.667,
+      "y_m": 43.328,
+      "source_x_pt": 81.779,
+      "source_y_pt": 115.542,
+      "nearby_text": "Sponsors"
+    },
+    {
+      "booth_id": "8F15",
+      "x_m": 33.653,
+      "y_m": 43.328,
+      "source_x_pt": 89.741,
+      "source_y_pt": 115.542,
+      "nearby_text": "Sponsors"
+    },
+    {
+      "booth_id": "8E19",
+      "x_m": 39.13,
+      "y_m": 43.328,
+      "source_x_pt": 104.346,
+      "source_y_pt": 115.542,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8E18",
+      "x_m": 42.116,
+      "y_m": 43.328,
+      "source_x_pt": 112.309,
+      "source_y_pt": 115.542,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D19",
+      "x_m": 47.673,
+      "y_m": 43.328,
+      "source_x_pt": 127.128,
+      "source_y_pt": 115.542,
+      "nearby_text": "Caring Group"
+    },
+    {
+      "booth_id": "8D18",
+      "x_m": 50.659,
+      "y_m": 43.328,
+      "source_x_pt": 135.091,
+      "source_y_pt": 115.542,
+      "nearby_text": "Caring Group"
+    },
+    {
+      "booth_id": "8C19",
+      "x_m": 56.232,
+      "y_m": 43.327,
+      "source_x_pt": 149.952,
+      "source_y_pt": 115.539,
+      "nearby_text": "Hong Kong Zihua"
+    },
+    {
+      "booth_id": "8C18",
+      "x_m": 59.178,
+      "y_m": 43.327,
+      "source_x_pt": 157.807,
+      "source_y_pt": 115.539,
+      "nearby_text": "Hakeem"
+    },
+    {
+      "booth_id": "8B15",
+      "x_m": 64.768,
+      "y_m": 43.329,
+      "source_x_pt": 172.716,
+      "source_y_pt": 115.544,
+      "nearby_text": "Hom Liv"
+    },
+    {
+      "booth_id": "7J15",
+      "x_m": 67.726,
+      "y_m": 43.331,
+      "source_x_pt": 180.602,
+      "source_y_pt": 115.549,
+      "nearby_text": "Amanda"
+    },
+    {
+      "booth_id": "7H19",
+      "x_m": 73.313,
+      "y_m": 43.331,
+      "source_x_pt": 195.5,
+      "source_y_pt": 115.549,
+      "nearby_text": "Trade Indonesia"
+    },
+    {
+      "booth_id": "7H18",
+      "x_m": 76.298,
+      "y_m": 43.331,
+      "source_x_pt": 203.463,
+      "source_y_pt": 115.549,
+      "nearby_text": "Attache Indonesia"
+    },
+    {
+      "booth_id": "7G19",
+      "x_m": 81.856,
+      "y_m": 43.332,
+      "source_x_pt": 218.283,
+      "source_y_pt": 115.551,
+      "nearby_text": "PT Golden Power"
+    },
+    {
+      "booth_id": "7G18",
+      "x_m": 84.842,
+      "y_m": 43.332,
+      "source_x_pt": 226.246,
+      "source_y_pt": 115.551,
+      "nearby_text": "Info Pages"
+    },
+    {
+      "booth_id": "6G19",
+      "x_m": 133.133,
+      "y_m": 43.332,
+      "source_x_pt": 355.023,
+      "source_y_pt": 115.551,
+      "nearby_text": "BLH SME"
+    },
+    {
+      "booth_id": "6G18",
+      "x_m": 136.119,
+      "y_m": 43.332,
+      "source_x_pt": 362.985,
+      "source_y_pt": 115.551,
+      "nearby_text": "BANKS"
+    },
+    {
+      "booth_id": "6F19",
+      "x_m": 141.663,
+      "y_m": 43.332,
+      "source_x_pt": 377.769,
+      "source_y_pt": 115.551,
+      "nearby_text": "ecneulF oG"
+    },
+    {
+      "booth_id": "6F18",
+      "x_m": 144.649,
+      "y_m": 43.332,
+      "source_x_pt": 385.731,
+      "source_y_pt": 115.551,
+      "nearby_text": "MJK gnitekraM ecneulF"
+    },
+    {
+      "booth_id": "6F14",
+      "x_m": 150.223,
+      "y_m": 43.332,
+      "source_x_pt": 400.594,
+      "source_y_pt": 115.551,
+      "nearby_text": "P y ra m is r"
+    },
+    {
+      "booth_id": "6E15",
+      "x_m": 153.192,
+      "y_m": 43.332,
+      "source_x_pt": 408.512,
+      "source_y_pt": 115.551,
+      "nearby_text": "AIA r"
+    },
+    {
+      "booth_id": "6D19",
+      "x_m": 158.789,
+      "y_m": 43.332,
+      "source_x_pt": 423.437,
+      "source_y_pt": 115.551,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6D18",
+      "x_m": 161.735,
+      "y_m": 43.332,
+      "source_x_pt": 431.292,
+      "source_y_pt": 115.551,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8A07",
+      "x_m": 45.501,
+      "y_m": 37.389,
+      "source_x_pt": 121.335,
+      "source_y_pt": 99.704,
+      "nearby_text": "Oxy Bene fit"
+    },
+    {
+      "booth_id": "8A06",
+      "x_m": 48.447,
+      "y_m": 37.389,
+      "source_x_pt": 129.191,
+      "source_y_pt": 99.704,
+      "nearby_text": "NCCIM"
+    },
+    {
+      "booth_id": "8A05",
+      "x_m": 51.432,
+      "y_m": 37.389,
+      "source_x_pt": 137.153,
+      "source_y_pt": 99.704,
+      "nearby_text": "ZUS"
+    },
+    {
+      "booth_id": "8A04",
+      "x_m": 54.418,
+      "y_m": 37.389,
+      "source_x_pt": 145.115,
+      "source_y_pt": 99.704,
+      "nearby_text": "ZUS"
+    },
+    {
+      "booth_id": "8A03",
+      "x_m": 57.404,
+      "y_m": 37.389,
+      "source_x_pt": 153.078,
+      "source_y_pt": 99.704,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8A02",
+      "x_m": 60.39,
+      "y_m": 37.389,
+      "source_x_pt": 161.04,
+      "source_y_pt": 99.704,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8A01",
+      "x_m": 63.416,
+      "y_m": 37.389,
+      "source_x_pt": 169.109,
+      "source_y_pt": 99.704,
+      "nearby_text": "Informa 1.5M"
+    },
+    {
+      "booth_id": "7A14",
+      "x_m": 70.823,
+      "y_m": 37.391,
+      "source_x_pt": 188.861,
+      "source_y_pt": 99.709,
+      "nearby_text": "DB"
+    },
+    {
+      "booth_id": "7A13",
+      "x_m": 73.809,
+      "y_m": 37.391,
+      "source_x_pt": 196.823,
+      "source_y_pt": 99.709,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7A12",
+      "x_m": 76.794,
+      "y_m": 37.391,
+      "source_x_pt": 204.785,
+      "source_y_pt": 99.709,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7A11",
+      "x_m": 79.82,
+      "y_m": 37.391,
+      "source_x_pt": 212.854,
+      "source_y_pt": 99.709,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7A10",
+      "x_m": 82.766,
+      "y_m": 37.391,
+      "source_x_pt": 220.71,
+      "source_y_pt": 99.709,
+      "nearby_text": "Ask Me!"
+    },
+    {
+      "booth_id": "7A09",
+      "x_m": 85.712,
+      "y_m": 37.391,
+      "source_x_pt": 228.566,
+      "source_y_pt": 99.709,
+      "nearby_text": "Ask Me! 1.5M FA FB"
+    },
+    {
+      "booth_id": "7A08",
+      "x_m": 104.782,
+      "y_m": 37.391,
+      "source_x_pt": 279.418,
+      "source_y_pt": 99.709,
+      "nearby_text": "Hwatai"
+    },
+    {
+      "booth_id": "7A07",
+      "x_m": 107.768,
+      "y_m": 37.391,
+      "source_x_pt": 287.38,
+      "source_y_pt": 99.709,
+      "nearby_text": "Hwatai"
+    },
+    {
+      "booth_id": "7A06",
+      "x_m": 110.754,
+      "y_m": 37.391,
+      "source_x_pt": 295.343,
+      "source_y_pt": 99.709,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7A05",
+      "x_m": 113.739,
+      "y_m": 37.391,
+      "source_x_pt": 303.305,
+      "source_y_pt": 99.709,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7A04",
+      "x_m": 116.725,
+      "y_m": 37.391,
+      "source_x_pt": 311.267,
+      "source_y_pt": 99.709,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7A03",
+      "x_m": 119.671,
+      "y_m": 37.391,
+      "source_x_pt": 319.123,
+      "source_y_pt": 99.709,
+      "nearby_text": "Angkatan Koperasi"
+    },
+    {
+      "booth_id": "7A02",
+      "x_m": 122.657,
+      "y_m": 37.391,
+      "source_x_pt": 327.085,
+      "source_y_pt": 99.709,
+      "nearby_text": "Angkatan Koperasi"
+    },
+    {
+      "booth_id": "7A01",
+      "x_m": 125.722,
+      "y_m": 37.391,
+      "source_x_pt": 335.259,
+      "source_y_pt": 99.709,
+      "nearby_text": "Al Marwaan 1.5M"
+    },
+    {
+      "booth_id": "6A26",
+      "x_m": 131.097,
+      "y_m": 37.391,
+      "source_x_pt": 349.593,
+      "source_y_pt": 99.709,
+      "nearby_text": "Aura Biocare DB"
+    },
+    {
+      "booth_id": "6A25",
+      "x_m": 134.083,
+      "y_m": 37.391,
+      "source_x_pt": 357.556,
+      "source_y_pt": 99.709,
+      "nearby_text": "Aura Biocare DB"
+    },
+    {
+      "booth_id": "6A24",
+      "x_m": 137.069,
+      "y_m": 37.391,
+      "source_x_pt": 365.518,
+      "source_y_pt": 99.709,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6A23",
+      "x_m": 140.055,
+      "y_m": 37.391,
+      "source_x_pt": 373.48,
+      "source_y_pt": 99.709,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6A22",
+      "x_m": 143.041,
+      "y_m": 37.391,
+      "source_x_pt": 381.443,
+      "source_y_pt": 99.709,
+      "nearby_text": "Print- daddy"
+    },
+    {
+      "booth_id": "6A21",
+      "x_m": 146.067,
+      "y_m": 37.391,
+      "source_x_pt": 389.512,
+      "source_y_pt": 99.709,
+      "nearby_text": "Print- daddy 1.5M FA FB"
+    },
+    {
+      "booth_id": "6A20",
+      "x_m": 166.609,
+      "y_m": 37.391,
+      "source_x_pt": 444.291,
+      "source_y_pt": 99.709,
+      "nearby_text": "IN- HART 5M / 16.4FT"
+    },
+    {
+      "booth_id": "6A19",
+      "x_m": 169.595,
+      "y_m": 37.391,
+      "source_x_pt": 452.253,
+      "source_y_pt": 99.709,
+      "nearby_text": "Shand ong 16.4FT 1.5M Halal"
+    },
+    {
+      "booth_id": "6E14",
+      "x_m": 172.581,
+      "y_m": 37.391,
+      "source_x_pt": 460.215,
+      "source_y_pt": 99.709,
+      "nearby_text": "1.5M"
+    },
+    {
+      "booth_id": "7B05",
+      "x_m": 124.569,
+      "y_m": 87.747,
+      "source_x_pt": 332.183,
+      "source_y_pt": 233.993,
+      "nearby_text": "MIHAS Live"
+    },
+    {
+      "booth_id": "6H05",
+      "x_m": 127.577,
+      "y_m": 87.748,
+      "source_x_pt": 340.207,
+      "source_y_pt": 233.995,
+      "nearby_text": "MIHAS Live"
+    },
+    {
+      "booth_id": "7B06",
+      "x_m": 124.569,
+      "y_m": 84.494,
+      "source_x_pt": 332.183,
+      "source_y_pt": 225.318,
+      "nearby_text": "Live Box"
+    },
+    {
+      "booth_id": "6H06",
+      "x_m": 127.577,
+      "y_m": 84.495,
+      "source_x_pt": 340.207,
+      "source_y_pt": 225.32,
+      "nearby_text": "Live Box"
+    },
+    {
+      "booth_id": "7B07",
+      "x_m": 124.569,
+      "y_m": 81.241,
+      "source_x_pt": 332.183,
+      "source_y_pt": 216.643,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6H07",
+      "x_m": 127.577,
+      "y_m": 81.242,
+      "source_x_pt": 340.207,
+      "source_y_pt": 216.645,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7B08",
+      "x_m": 124.569,
+      "y_m": 77.988,
+      "source_x_pt": 332.183,
+      "source_y_pt": 207.968,
+      "nearby_text": "Thien Lee"
+    },
+    {
+      "booth_id": "6H08",
+      "x_m": 127.577,
+      "y_m": 77.989,
+      "source_x_pt": 340.207,
+      "source_y_pt": 207.97,
+      "nearby_text": "7431"
+    },
+    {
+      "booth_id": "8G25",
+      "x_m": 22.221,
+      "y_m": 72.045,
+      "source_x_pt": 59.257,
+      "source_y_pt": 192.121,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8G10",
+      "x_m": 25.207,
+      "y_m": 72.045,
+      "source_x_pt": 67.219,
+      "source_y_pt": 192.121,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8G24",
+      "x_m": 22.221,
+      "y_m": 68.792,
+      "source_x_pt": 59.257,
+      "source_y_pt": 183.446,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8G11",
+      "x_m": 25.287,
+      "y_m": 68.792,
+      "source_x_pt": 67.432,
+      "source_y_pt": 183.446,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7B09",
+      "x_m": 124.569,
+      "y_m": 68.793,
+      "source_x_pt": 332.183,
+      "source_y_pt": 183.448,
+      "nearby_text": "B e ll In te r n ationl"
+    },
+    {
+      "booth_id": "6H09",
+      "x_m": 127.577,
+      "y_m": 68.794,
+      "source_x_pt": 340.207,
+      "source_y_pt": 183.451,
+      "nearby_text": "ll n Umios"
+    },
+    {
+      "booth_id": "8G23",
+      "x_m": 22.221,
+      "y_m": 65.539,
+      "source_x_pt": 59.257,
+      "source_y_pt": 174.771,
+      "nearby_text": "DC"
+    },
+    {
+      "booth_id": "8G12",
+      "x_m": 25.207,
+      "y_m": 65.539,
+      "source_x_pt": 67.219,
+      "source_y_pt": 174.771,
+      "nearby_text": "DC"
+    },
+    {
+      "booth_id": "7B10",
+      "x_m": 124.569,
+      "y_m": 65.54,
+      "source_x_pt": 332.183,
+      "source_y_pt": 174.773,
+      "nearby_text": "Nippon"
+    },
+    {
+      "booth_id": "6H10",
+      "x_m": 127.577,
+      "y_m": 65.541,
+      "source_x_pt": 340.207,
+      "source_y_pt": 174.776,
+      "nearby_text": "Sugiyo"
+    },
+    {
+      "booth_id": "8G22",
+      "x_m": 22.221,
+      "y_m": 62.286,
+      "source_x_pt": 59.257,
+      "source_y_pt": 166.096,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8G13",
+      "x_m": 25.207,
+      "y_m": 62.286,
+      "source_x_pt": 67.219,
+      "source_y_pt": 166.096,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7B11",
+      "x_m": 124.649,
+      "y_m": 62.287,
+      "source_x_pt": 332.396,
+      "source_y_pt": 166.098,
+      "nearby_text": "Koba yashi"
+    },
+    {
+      "booth_id": "6H11",
+      "x_m": 127.617,
+      "y_m": 62.288,
+      "source_x_pt": 340.313,
+      "source_y_pt": 166.101,
+      "nearby_text": "Kochi"
+    },
+    {
+      "booth_id": "8G21",
+      "x_m": 22.301,
+      "y_m": 59.033,
+      "source_x_pt": 59.47,
+      "source_y_pt": 157.421,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8G14",
+      "x_m": 25.207,
+      "y_m": 59.033,
+      "source_x_pt": 67.219,
+      "source_y_pt": 157.421,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7B12",
+      "x_m": 124.569,
+      "y_m": 59.034,
+      "source_x_pt": 332.183,
+      "source_y_pt": 157.423,
+      "nearby_text": "JETRO"
+    },
+    {
+      "booth_id": "6H12",
+      "x_m": 127.577,
+      "y_m": 59.035,
+      "source_x_pt": 340.207,
+      "source_y_pt": 157.426,
+      "nearby_text": "JETRO KL"
+    },
+    {
+      "booth_id": "8G20",
+      "x_m": 22.221,
+      "y_m": 53.09,
+      "source_x_pt": 59.257,
+      "source_y_pt": 141.574,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8G15",
+      "x_m": 25.207,
+      "y_m": 53.09,
+      "source_x_pt": 67.219,
+      "source_y_pt": 141.574,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8G19",
+      "x_m": 22.221,
+      "y_m": 49.837,
+      "source_x_pt": 59.257,
+      "source_y_pt": 132.899,
+      "nearby_text": "Yapiem"
+    },
+    {
+      "booth_id": "8G16",
+      "x_m": 25.207,
+      "y_m": 49.837,
+      "source_x_pt": 67.219,
+      "source_y_pt": 132.899,
+      "nearby_text": "Yapiem"
+    },
+    {
+      "booth_id": "7B13",
+      "x_m": 124.569,
+      "y_m": 49.838,
+      "source_x_pt": 332.183,
+      "source_y_pt": 132.901,
+      "nearby_text": "Afyaa"
+    },
+    {
+      "booth_id": "6H13",
+      "x_m": 127.577,
+      "y_m": 49.839,
+      "source_x_pt": 340.207,
+      "source_y_pt": 132.903,
+      "nearby_text": "Afyaa"
+    },
+    {
+      "booth_id": "8G18B",
+      "x_m": 22.22,
+      "y_m": 46.584,
+      "source_x_pt": 59.253,
+      "source_y_pt": 124.224,
+      "nearby_text": "Yapiem"
+    },
+    {
+      "booth_id": "8G17A",
+      "x_m": 25.206,
+      "y_m": 46.584,
+      "source_x_pt": 67.216,
+      "source_y_pt": 124.224,
+      "nearby_text": "Yapiem"
+    },
+    {
+      "booth_id": "7B14",
+      "x_m": 124.569,
+      "y_m": 46.585,
+      "source_x_pt": 332.183,
+      "source_y_pt": 124.226,
+      "nearby_text": "F&N"
+    },
+    {
+      "booth_id": "6H14",
+      "x_m": 127.577,
+      "y_m": 46.586,
+      "source_x_pt": 340.207,
+      "source_y_pt": 124.228,
+      "nearby_text": "F&N"
+    },
+    {
+      "booth_id": "7B15",
+      "x_m": 124.569,
+      "y_m": 43.332,
+      "source_x_pt": 332.183,
+      "source_y_pt": 115.551,
+      "nearby_text": "36"
+    },
+    {
+      "booth_id": "6H15",
+      "x_m": 127.577,
+      "y_m": 43.333,
+      "source_x_pt": 340.207,
+      "source_y_pt": 115.553,
+      "nearby_text": "sqm"
+    },
+    {
+      "booth_id": "7F32",
+      "x_m": 64.71,
+      "y_m": 88.4,
+      "source_x_pt": 172.559,
+      "source_y_pt": 235.733,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F33",
+      "x_m": 67.696,
+      "y_m": 88.356,
+      "source_x_pt": 180.522,
+      "source_y_pt": 235.617,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E25",
+      "x_m": 98.93,
+      "y_m": 87.748,
+      "source_x_pt": 263.814,
+      "source_y_pt": 233.995,
+      "nearby_text": "noinO"
+    },
+    {
+      "booth_id": "7E01",
+      "x_m": 101.995,
+      "y_m": 87.748,
+      "source_x_pt": 271.987,
+      "source_y_pt": 233.995,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D26",
+      "x_m": 107.472,
+      "y_m": 87.748,
+      "source_x_pt": 286.592,
+      "source_y_pt": 233.995,
+      "nearby_text": "EPKR"
+    },
+    {
+      "booth_id": "7D01",
+      "x_m": 110.538,
+      "y_m": 87.748,
+      "source_x_pt": 294.767,
+      "source_y_pt": 233.995,
+      "nearby_text": "EPKR"
+    },
+    {
+      "booth_id": "7C31",
+      "x_m": 116.111,
+      "y_m": 87.748,
+      "source_x_pt": 309.63,
+      "source_y_pt": 233.995,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7C06",
+      "x_m": 119.018,
+      "y_m": 87.748,
+      "source_x_pt": 317.382,
+      "source_y_pt": 233.995,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F31",
+      "x_m": 64.829,
+      "y_m": 85.797,
+      "source_x_pt": 172.877,
+      "source_y_pt": 228.793,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F01",
+      "x_m": 67.815,
+      "y_m": 85.58,
+      "source_x_pt": 180.839,
+      "source_y_pt": 228.212,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E24",
+      "x_m": 98.93,
+      "y_m": 84.495,
+      "source_x_pt": 263.814,
+      "source_y_pt": 225.32,
+      "nearby_text": "noinO giB"
+    },
+    {
+      "booth_id": "7E02",
+      "x_m": 101.916,
+      "y_m": 84.495,
+      "source_x_pt": 271.776,
+      "source_y_pt": 225.32,
+      "nearby_text": "kubnoeJ"
+    },
+    {
+      "booth_id": "7D25",
+      "x_m": 107.472,
+      "y_m": 84.495,
+      "source_x_pt": 286.592,
+      "source_y_pt": 225.32,
+      "nearby_text": "KOTRA"
+    },
+    {
+      "booth_id": "7D02",
+      "x_m": 110.458,
+      "y_m": 84.495,
+      "source_x_pt": 294.554,
+      "source_y_pt": 225.32,
+      "nearby_text": "KOTRA"
+    },
+    {
+      "booth_id": "7C30",
+      "x_m": 116.032,
+      "y_m": 84.495,
+      "source_x_pt": 309.419,
+      "source_y_pt": 225.32,
+      "nearby_text": "Business France"
+    },
+    {
+      "booth_id": "7C07",
+      "x_m": 119.018,
+      "y_m": 84.495,
+      "source_x_pt": 317.382,
+      "source_y_pt": 225.32,
+      "nearby_text": "RBI Business"
+    },
+    {
+      "booth_id": "7F30",
+      "x_m": 64.75,
+      "y_m": 83.151,
+      "source_x_pt": 172.666,
+      "source_y_pt": 221.737,
+      "nearby_text": "2.6"
+    },
+    {
+      "booth_id": "7F02",
+      "x_m": 67.736,
+      "y_m": 83.237,
+      "source_x_pt": 180.628,
+      "source_y_pt": 221.967,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E23",
+      "x_m": 98.93,
+      "y_m": 81.242,
+      "source_x_pt": 263.814,
+      "source_y_pt": 216.645,
+      "nearby_text": "giB"
+    },
+    {
+      "booth_id": "7E03",
+      "x_m": 101.916,
+      "y_m": 81.242,
+      "source_x_pt": 271.776,
+      "source_y_pt": 216.645,
+      "nearby_text": "kubnoeJ"
+    },
+    {
+      "booth_id": "7D24",
+      "x_m": 107.512,
+      "y_m": 81.242,
+      "source_x_pt": 286.698,
+      "source_y_pt": 216.645,
+      "nearby_text": "KOTRA 72sqm"
+    },
+    {
+      "booth_id": "7D03",
+      "x_m": 110.458,
+      "y_m": 81.242,
+      "source_x_pt": 294.554,
+      "source_y_pt": 216.645,
+      "nearby_text": "KOTRA 72sqm"
+    },
+    {
+      "booth_id": "7C29",
+      "x_m": 116.032,
+      "y_m": 81.242,
+      "source_x_pt": 309.419,
+      "source_y_pt": 216.645,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7C08",
+      "x_m": 119.018,
+      "y_m": 81.242,
+      "source_x_pt": 317.382,
+      "source_y_pt": 216.645,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F03",
+      "x_m": 67.736,
+      "y_m": 80.375,
+      "source_x_pt": 180.628,
+      "source_y_pt": 214.332,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F29A",
+      "x_m": 64.708,
+      "y_m": 77.729,
+      "source_x_pt": 172.556,
+      "source_y_pt": 207.278,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F04",
+      "x_m": 67.736,
+      "y_m": 77.729,
+      "source_x_pt": 180.628,
+      "source_y_pt": 207.276,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E22",
+      "x_m": 98.93,
+      "y_m": 77.989,
+      "source_x_pt": 263.814,
+      "source_y_pt": 207.97,
+      "nearby_text": "1EBC"
+    },
+    {
+      "booth_id": "7E04",
+      "x_m": 101.916,
+      "y_m": 77.989,
+      "source_x_pt": 271.776,
+      "source_y_pt": 207.97,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D23",
+      "x_m": 107.472,
+      "y_m": 77.989,
+      "source_x_pt": 286.592,
+      "source_y_pt": 207.97,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D04",
+      "x_m": 110.458,
+      "y_m": 77.989,
+      "source_x_pt": 294.554,
+      "source_y_pt": 207.97,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7C28",
+      "x_m": 116.032,
+      "y_m": 77.989,
+      "source_x_pt": 309.419,
+      "source_y_pt": 207.97,
+      "nearby_text": "aT Center"
+    },
+    {
+      "booth_id": "7C09",
+      "x_m": 119.018,
+      "y_m": 77.989,
+      "source_x_pt": 317.382,
+      "source_y_pt": 207.97,
+      "nearby_text": "Center"
+    },
+    {
+      "booth_id": "7F24",
+      "x_m": 90.387,
+      "y_m": 72.047,
+      "source_x_pt": 241.033,
+      "source_y_pt": 192.126,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E05",
+      "x_m": 101.916,
+      "y_m": 72.047,
+      "source_x_pt": 271.776,
+      "source_y_pt": 192.126,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D22",
+      "x_m": 107.512,
+      "y_m": 72.047,
+      "source_x_pt": 286.698,
+      "source_y_pt": 192.126,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D05",
+      "x_m": 110.458,
+      "y_m": 72.047,
+      "source_x_pt": 294.554,
+      "source_y_pt": 192.126,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7C27",
+      "x_m": 116.032,
+      "y_m": 72.047,
+      "source_x_pt": 309.419,
+      "source_y_pt": 192.126,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7C10",
+      "x_m": 119.018,
+      "y_m": 72.047,
+      "source_x_pt": 317.382,
+      "source_y_pt": 192.126,
+      "nearby_text": "MOS F&B"
+    },
+    {
+      "booth_id": "7F23",
+      "x_m": 90.387,
+      "y_m": 68.794,
+      "source_x_pt": 241.033,
+      "source_y_pt": 183.451,
+      "nearby_text": "MIHAS"
+    },
+    {
+      "booth_id": "7F09",
+      "x_m": 93.373,
+      "y_m": 68.794,
+      "source_x_pt": 248.995,
+      "source_y_pt": 183.451,
+      "nearby_text": "MIHAS"
+    },
+    {
+      "booth_id": "7E21",
+      "x_m": 99.009,
+      "y_m": 68.794,
+      "source_x_pt": 264.025,
+      "source_y_pt": 183.451,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E06",
+      "x_m": 101.916,
+      "y_m": 68.794,
+      "source_x_pt": 271.776,
+      "source_y_pt": 183.451,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D21",
+      "x_m": 107.552,
+      "y_m": 68.794,
+      "source_x_pt": 286.805,
+      "source_y_pt": 183.451,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D06",
+      "x_m": 110.458,
+      "y_m": 68.794,
+      "source_x_pt": 294.554,
+      "source_y_pt": 183.451,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7C26",
+      "x_m": 116.032,
+      "y_m": 68.794,
+      "source_x_pt": 309.419,
+      "source_y_pt": 183.451,
+      "nearby_text": "Korea"
+    },
+    {
+      "booth_id": "7C11",
+      "x_m": 119.058,
+      "y_m": 68.794,
+      "source_x_pt": 317.488,
+      "source_y_pt": 183.451,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F22",
+      "x_m": 90.387,
+      "y_m": 65.541,
+      "source_x_pt": 241.033,
+      "source_y_pt": 174.776,
+      "nearby_text": "MIHAS 2027"
+    },
+    {
+      "booth_id": "7F10",
+      "x_m": 93.373,
+      "y_m": 65.541,
+      "source_x_pt": 248.995,
+      "source_y_pt": 174.776,
+      "nearby_text": "MIHAS 2027"
+    },
+    {
+      "booth_id": "7E20",
+      "x_m": 98.93,
+      "y_m": 65.541,
+      "source_x_pt": 263.814,
+      "source_y_pt": 174.776,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E07",
+      "x_m": 101.916,
+      "y_m": 65.541,
+      "source_x_pt": 271.776,
+      "source_y_pt": 174.776,
+      "nearby_text": "kubnoeJ"
+    },
+    {
+      "booth_id": "7D20",
+      "x_m": 107.512,
+      "y_m": 65.541,
+      "source_x_pt": 286.698,
+      "source_y_pt": 174.776,
+      "nearby_text": "KOTRA 90sqm"
+    },
+    {
+      "booth_id": "7D07",
+      "x_m": 110.458,
+      "y_m": 65.541,
+      "source_x_pt": 294.554,
+      "source_y_pt": 174.776,
+      "nearby_text": "KOTRA 90sqm"
+    },
+    {
+      "booth_id": "7C25",
+      "x_m": 116.032,
+      "y_m": 65.541,
+      "source_x_pt": 309.419,
+      "source_y_pt": 174.776,
+      "nearby_text": "Korea Halal Export 45sqm"
+    },
+    {
+      "booth_id": "7C12",
+      "x_m": 119.018,
+      "y_m": 65.541,
+      "source_x_pt": 317.382,
+      "source_y_pt": 174.776,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F21",
+      "x_m": 90.467,
+      "y_m": 62.288,
+      "source_x_pt": 241.246,
+      "source_y_pt": 166.101,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F11",
+      "x_m": 93.453,
+      "y_m": 62.288,
+      "source_x_pt": 249.209,
+      "source_y_pt": 166.101,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E19",
+      "x_m": 98.93,
+      "y_m": 62.288,
+      "source_x_pt": 263.814,
+      "source_y_pt": 166.101,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E08",
+      "x_m": 101.916,
+      "y_m": 62.288,
+      "source_x_pt": 271.776,
+      "source_y_pt": 166.101,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D19",
+      "x_m": 107.472,
+      "y_m": 62.288,
+      "source_x_pt": 286.592,
+      "source_y_pt": 166.101,
+      "nearby_text": "90sqm"
+    },
+    {
+      "booth_id": "7D08",
+      "x_m": 110.458,
+      "y_m": 62.288,
+      "source_x_pt": 294.554,
+      "source_y_pt": 166.101,
+      "nearby_text": "90sqm"
+    },
+    {
+      "booth_id": "7C24",
+      "x_m": 116.032,
+      "y_m": 62.288,
+      "source_x_pt": 309.419,
+      "source_y_pt": 166.101,
+      "nearby_text": "Export 45sqm"
+    },
+    {
+      "booth_id": "7C13",
+      "x_m": 119.018,
+      "y_m": 62.288,
+      "source_x_pt": 317.382,
+      "source_y_pt": 166.101,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F20",
+      "x_m": 90.387,
+      "y_m": 59.035,
+      "source_x_pt": 241.033,
+      "source_y_pt": 157.426,
+      "nearby_text": "Trad expo"
+    },
+    {
+      "booth_id": "7F12",
+      "x_m": 93.373,
+      "y_m": 59.035,
+      "source_x_pt": 248.995,
+      "source_y_pt": 157.426,
+      "nearby_text": "Trad expo"
+    },
+    {
+      "booth_id": "7E18",
+      "x_m": 98.93,
+      "y_m": 59.035,
+      "source_x_pt": 263.814,
+      "source_y_pt": 157.426,
+      "nearby_text": "Nexus coffee"
+    },
+    {
+      "booth_id": "7E09",
+      "x_m": 101.916,
+      "y_m": 59.035,
+      "source_x_pt": 271.776,
+      "source_y_pt": 157.426,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D18",
+      "x_m": 107.472,
+      "y_m": 59.035,
+      "source_x_pt": 286.592,
+      "source_y_pt": 157.426,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D09",
+      "x_m": 110.458,
+      "y_m": 59.035,
+      "source_x_pt": 294.554,
+      "source_y_pt": 157.426,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7C23",
+      "x_m": 116.032,
+      "y_m": 59.035,
+      "source_x_pt": 309.419,
+      "source_y_pt": 157.426,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7C14",
+      "x_m": 119.018,
+      "y_m": 59.035,
+      "source_x_pt": 317.382,
+      "source_y_pt": 157.426,
+      "nearby_text": "Geoje (tradexpo)"
+    },
+    {
+      "booth_id": "8H20",
+      "x_m": 13.798,
+      "y_m": 53.092,
+      "source_x_pt": 36.795,
+      "source_y_pt": 141.579,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8H15",
+      "x_m": 16.783,
+      "y_m": 53.092,
+      "source_x_pt": 44.755,
+      "source_y_pt": 141.579,
+      "nearby_text": "J K A g ri"
+    },
+    {
+      "booth_id": "7F19",
+      "x_m": 90.387,
+      "y_m": 53.092,
+      "source_x_pt": 241.033,
+      "source_y_pt": 141.578,
+      "nearby_text": "Trad expo"
+    },
+    {
+      "booth_id": "7E17",
+      "x_m": 98.93,
+      "y_m": 53.092,
+      "source_x_pt": 263.814,
+      "source_y_pt": 141.578,
+      "nearby_text": "FR"
+    },
+    {
+      "booth_id": "7E10",
+      "x_m": 101.916,
+      "y_m": 53.092,
+      "source_x_pt": 271.776,
+      "source_y_pt": 141.578,
+      "nearby_text": "Trad expo"
+    },
+    {
+      "booth_id": "7D17",
+      "x_m": 107.472,
+      "y_m": 53.092,
+      "source_x_pt": 286.592,
+      "source_y_pt": 141.578,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D10",
+      "x_m": 110.458,
+      "y_m": 53.092,
+      "source_x_pt": 294.554,
+      "source_y_pt": 141.578,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7C22",
+      "x_m": 116.032,
+      "y_m": 53.092,
+      "source_x_pt": 309.419,
+      "source_y_pt": 141.578,
+      "nearby_text": "Orange Crush"
+    },
+    {
+      "booth_id": "7C15",
+      "x_m": 119.018,
+      "y_m": 53.092,
+      "source_x_pt": 317.382,
+      "source_y_pt": 141.578,
+      "nearby_text": "VIDA"
+    },
+    {
+      "booth_id": "8H19",
+      "x_m": 13.798,
+      "y_m": 49.839,
+      "source_x_pt": 36.795,
+      "source_y_pt": 132.904,
+      "nearby_text": "Dr Parveen"
+    },
+    {
+      "booth_id": "8H16",
+      "x_m": 16.783,
+      "y_m": 49.839,
+      "source_x_pt": 44.755,
+      "source_y_pt": 132.904,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F18",
+      "x_m": 90.387,
+      "y_m": 49.839,
+      "source_x_pt": 241.033,
+      "source_y_pt": 132.903,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F13",
+      "x_m": 93.373,
+      "y_m": 49.839,
+      "source_x_pt": 248.995,
+      "source_y_pt": 132.903,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E16",
+      "x_m": 98.93,
+      "y_m": 49.839,
+      "source_x_pt": 263.814,
+      "source_y_pt": 132.903,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E11",
+      "x_m": 101.995,
+      "y_m": 49.839,
+      "source_x_pt": 271.987,
+      "source_y_pt": 132.903,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D16",
+      "x_m": 107.472,
+      "y_m": 49.839,
+      "source_x_pt": 286.592,
+      "source_y_pt": 132.903,
+      "nearby_text": "PKNS"
+    },
+    {
+      "booth_id": "7D11",
+      "x_m": 110.538,
+      "y_m": 49.839,
+      "source_x_pt": 294.767,
+      "source_y_pt": 132.903,
+      "nearby_text": "PKNS"
+    },
+    {
+      "booth_id": "7C21",
+      "x_m": 116.111,
+      "y_m": 49.839,
+      "source_x_pt": 309.63,
+      "source_y_pt": 132.903,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7C16",
+      "x_m": 119.018,
+      "y_m": 49.839,
+      "source_x_pt": 317.382,
+      "source_y_pt": 132.903,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8H18B",
+      "x_m": 13.797,
+      "y_m": 46.586,
+      "source_x_pt": 36.792,
+      "source_y_pt": 124.229,
+      "nearby_text": "Thought Rich"
+    },
+    {
+      "booth_id": "8H17A",
+      "x_m": 16.743,
+      "y_m": 46.586,
+      "source_x_pt": 44.647,
+      "source_y_pt": 124.229,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F17",
+      "x_m": 90.387,
+      "y_m": 46.586,
+      "source_x_pt": 241.033,
+      "source_y_pt": 124.228,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F14",
+      "x_m": 93.373,
+      "y_m": 46.586,
+      "source_x_pt": 248.995,
+      "source_y_pt": 124.228,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E15",
+      "x_m": 98.93,
+      "y_m": 46.586,
+      "source_x_pt": 263.814,
+      "source_y_pt": 124.228,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E12",
+      "x_m": 101.916,
+      "y_m": 46.586,
+      "source_x_pt": 271.776,
+      "source_y_pt": 124.228,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D15",
+      "x_m": 107.472,
+      "y_m": 46.586,
+      "source_x_pt": 286.592,
+      "source_y_pt": 124.228,
+      "nearby_text": "PKNS 72sqm"
+    },
+    {
+      "booth_id": "7D12",
+      "x_m": 110.458,
+      "y_m": 46.586,
+      "source_x_pt": 294.554,
+      "source_y_pt": 124.228,
+      "nearby_text": "PKNS 72sqm"
+    },
+    {
+      "booth_id": "7C20",
+      "x_m": 116.032,
+      "y_m": 46.586,
+      "source_x_pt": 309.419,
+      "source_y_pt": 124.228,
+      "nearby_text": "naseehK"
+    },
+    {
+      "booth_id": "7C17",
+      "x_m": 119.018,
+      "y_m": 46.586,
+      "source_x_pt": 317.382,
+      "source_y_pt": 124.228,
+      "nearby_text": "eemaM"
+    },
+    {
+      "booth_id": "7F16",
+      "x_m": 90.387,
+      "y_m": 43.333,
+      "source_x_pt": 241.033,
+      "source_y_pt": 115.553,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F15",
+      "x_m": 93.373,
+      "y_m": 43.333,
+      "source_x_pt": 248.995,
+      "source_y_pt": 115.553,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E14",
+      "x_m": 98.93,
+      "y_m": 43.333,
+      "source_x_pt": 263.814,
+      "source_y_pt": 115.553,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7E13",
+      "x_m": 101.916,
+      "y_m": 43.333,
+      "source_x_pt": 271.776,
+      "source_y_pt": 115.553,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D14",
+      "x_m": 107.512,
+      "y_m": 43.333,
+      "source_x_pt": 286.698,
+      "source_y_pt": 115.553,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7D13",
+      "x_m": 110.458,
+      "y_m": 43.333,
+      "source_x_pt": 294.554,
+      "source_y_pt": 115.553,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7C19",
+      "x_m": 116.032,
+      "y_m": 43.333,
+      "source_x_pt": 309.419,
+      "source_y_pt": 115.553,
+      "nearby_text": "naseehK"
+    },
+    {
+      "booth_id": "7C18",
+      "x_m": 119.018,
+      "y_m": 43.333,
+      "source_x_pt": 317.382,
+      "source_y_pt": 115.553,
+      "nearby_text": "eemaM"
+    },
+    {
+      "booth_id": "8J29",
+      "x_m": 8.821,
+      "y_m": 47.171,
+      "source_x_pt": 23.523,
+      "source_y_pt": 125.79,
+      "nearby_text": "Bernama Studio"
+    },
+    {
+      "booth_id": "8J30",
+      "x_m": 8.821,
+      "y_m": 45.002,
+      "source_x_pt": 23.523,
+      "source_y_pt": 120.006,
+      "nearby_text": "Bernama Studio 1500"
+    },
+    {
+      "booth_id": "8D32B",
+      "x_m": 22.236,
+      "y_m": 80.418,
+      "source_x_pt": 59.297,
+      "source_y_pt": 214.448,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8D05A",
+      "x_m": 25.182,
+      "y_m": 80.418,
+      "source_x_pt": 67.153,
+      "source_y_pt": 214.448,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C32B",
+      "x_m": 30.716,
+      "y_m": 80.418,
+      "source_x_pt": 81.91,
+      "source_y_pt": 214.448,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8C05A",
+      "x_m": 33.662,
+      "y_m": 80.418,
+      "source_x_pt": 89.766,
+      "source_y_pt": 214.448,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7H32B",
+      "x_m": 47.636,
+      "y_m": 80.591,
+      "source_x_pt": 127.029,
+      "source_y_pt": 214.91,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7H05A",
+      "x_m": 50.582,
+      "y_m": 80.591,
+      "source_x_pt": 134.885,
+      "source_y_pt": 214.91,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "7F29B",
+      "x_m": 64.748,
+      "y_m": 80.505,
+      "source_x_pt": 172.662,
+      "source_y_pt": 214.679,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8H18A",
+      "x_m": 13.756,
+      "y_m": 43.333,
+      "source_x_pt": 36.683,
+      "source_y_pt": 115.554,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8H17B",
+      "x_m": 16.782,
+      "y_m": 43.333,
+      "source_x_pt": 44.752,
+      "source_y_pt": 115.554,
+      "nearby_text": "UOB"
+    },
+    {
+      "booth_id": "8G18A",
+      "x_m": 22.22,
+      "y_m": 43.333,
+      "source_x_pt": 59.253,
+      "source_y_pt": 115.554,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "8G17B",
+      "x_m": 25.206,
+      "y_m": 43.333,
+      "source_x_pt": 67.215,
+      "source_y_pt": 115.554,
+      "nearby_text": ""
+    },
+    {
+      "booth_id": "6E13",
+      "x_m": 175.567,
+      "y_m": 37.391,
+      "source_x_pt": 468.178,
+      "source_y_pt": 99.709,
+      "nearby_text": ""
+    }
+  ],
+  "special_areas": [
+    {
+      "name": "MIHAS CAFE & VISITOR LOUNGE",
+      "size_m": "110 x 11"
+    },
+    {
+      "name": "WELLNESS CORNER",
+      "size_m": "63 x 11"
+    },
+    {
+      "name": "MIHAS CORNER",
+      "size_m": "11.5 x 15"
+    },
+    {
+      "name": "MIHAS MERCHANDISE",
+      "size_m": "12 x 3"
+    },
+    {
+      "name": "MEDIA CENTER",
+      "type": "special area"
+    },
+    {
+      "name": "PHOTO BOOTH",
+      "type": "special area"
+    },
+    {
+      "name": "INSP INTERNATIONAL SOURCING PROGRAMME",
+      "type": "special area"
+    }
+  ],
+  "accuracy_note": "Geometry and text are derived from the supplied source PDF vector content. No hidden geometry or exhibitor identity was invented."
+}
