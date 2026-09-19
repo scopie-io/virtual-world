@@ -85,6 +85,17 @@ function Start({ engine }: Eng) {
 const Icon = ({ d }: { d: string }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>;
 const ICONS = { map: 'M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14', express: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8.5 14a4.5 4.5 0 0 0 7 0M9 9.5v.5M15 9.5v.5', menu: 'M4 7h16M4 12h16M4 17h16' };
 
+/** Numbers that change roll to their new value: a score that ticks up is felt, one that flips is missed. */
+function useRolling(value: number, ms = 650): number {
+  const [shown, setShown] = useState(value);
+  useEffect(() => {
+    const from = shown, t0 = performance.now(); if (from === value) return; let raf = 0;
+    const tick = (now: number) => { const k = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - k, 3); setShown(Math.round(from + (value - from) * e)); if (k < 1) raf = requestAnimationFrame(tick); };
+    raf = requestAnimationFrame(tick); return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return shown;
+}
+
 /** While you sit: one true thing about the show at a time, counted from the floor plan. */
 function SeatNote() {
   const list = facts(level.value!), [i, setI] = useState(() => Math.floor(Math.random() * list.length));
@@ -95,7 +106,7 @@ function SeatNote() {
 function Hud({ engine }: Eng) {
   const m = me.value!, j = journey.value!, st = nearStation.value, has = st && stampedSet.value.has(st.id), view = st ? stationMap.value.get(st.id) : undefined;
   const [stamping, setStamping] = useState(false), [open, setOpen] = useState(false), [tray, setTray] = useState(false);
-  const place = herePlace.value, sitting = seated.value, eng = engine();
+  const place = herePlace.value, sitting = seated.value, eng = engine(), points = useRolling(m.xp);
   const express = (f: () => void) => () => { f(); setTray(false); };
   useEffect(() => { // an open tray is a question; tapping anywhere else is the answer "never mind"
     if (!tray) return;
@@ -122,9 +133,9 @@ function Hud({ engine }: Eng) {
       <div class={'objective' + (open ? ' open' : '')} onClick={() => setOpen(!open)}>
         <div class="top">
           <span class="k">{goal ? 'Guiding you to' : j.now ? `${word} ${j.now.n} of ${j.steps.length}` : j.kind === 'visitor' ? 'Mission complete' : 'Your booth is working'}</span>
-          <span class="score" title="Points">{m.xp.toLocaleString()}</span>
+          <span class={'score' + (points !== m.xp ? ' up' : '')} title="Points">{points.toLocaleString()}</span>
         </div>
-        <h2>{goal ? goal.label : j.now ? j.now.title : 'Free play'}</h2>
+        <h2 key={goal ? 'goal' : j.now?.n ?? 0} class="turn">{goal ? goal.label : j.now ? j.now.title : 'Free play'}</h2>
         {!goal && <p>{j.now ? j.now.todo : `${m.stamps.length} of ${total.toLocaleString()} booths stamped. Keep going, meet more people, climb the board.`}</p>}
         {!goal && <div class="dots" role="img" aria-label={`${j.done} of ${j.steps.length} done`}>{j.steps.map((s) => <i key={s.n} class={s.done ? 'on' : s === j.now ? 'now' : ''} />)}</div>}
         {!goal && j.kind === 'visitor' && j.now?.n === 3 && <div class="via">{Math.min(m.stamps.length, MISSION_STAMPS)} of {MISSION_STAMPS} stamped</div>}

@@ -9,6 +9,7 @@ import { NavGrid, pathLength, pointAlong, type P2 } from './nav';
 import { Astronaut } from './astronaut';
 import { Input } from './input';
 import { placeAt, taken, type Seat } from './places';
+import { RemoteTrack } from './remote';
 import { hallCards, hallLine } from './facts';
 import { api, ApiError } from '../net/api';
 import { atLaunchPad, currentDeck, distToGoal, goalVia, guideOn, guideTarget, herePlace, markSeen, me, modal, nearLift, nearStation, online, photoShot, seated, stampedSet, stationMap, stations, toast } from '../state';
@@ -22,7 +23,7 @@ const BOOTH_LABELS = 6, BOOTH_LABEL_RANGE = 12;
 /** A scan at a real booth is still "where you are" for this long after you come back to the game. */
 const ARRIVAL_FRESH_MS = 10 * 60_000;
 
-interface Holo { a: Astronaut; cls: Hologram['cls']; x: number; y: number; tx: number; ty: number; h: number; label: HTMLDivElement; seen: number; sitting: boolean }
+interface Holo { a: Astronaut; cls: Hologram['cls']; track: RemoteTrack; tx: number; ty: number; label: HTMLDivElement; seen: number; sitting: boolean }
 
 export function pickQuality(): Quality {
   const mem = (navigator as { deviceMemory?: number }).deviceMemory ?? 8;
@@ -40,7 +41,7 @@ export class Engine {
   private heading = 0;
   private speed01 = 0;
   private route: P2[] = [];
-  private cam = { yaw: 0, pitch: 1.0, dist: 170, want: 26 };
+  private cam = { yaw: 0, pitch: 1.0, dist: 170, want: 26, goalYaw: 0, goalPitch: 1.0 };
   private camTarget = new THREE.Vector3();
   private trail: THREE.InstancedMesh;
   private trailPath: P2[] = [];
@@ -80,7 +81,7 @@ export class Engine {
 
     this.input = new Input(this.renderer.domElement, {
       onTap: (x, y) => this.tapMove(x, y),
-      onOrbit: (dYaw, dPitch) => { this.cam.yaw += dYaw; this.cam.pitch = THREE.MathUtils.clamp(this.cam.pitch + dPitch, 0.62, 1.32); }, // from a low three-quarter view to almost straight down
+      onOrbit: (dYaw, dPitch) => { this.cam.goalYaw += dYaw; this.cam.goalPitch = THREE.MathUtils.clamp(this.cam.goalPitch + dPitch, 0.62, 1.32); }, // from a low three-quarter view to almost straight down
       onZoom: (f) => { this.cam.want = THREE.MathUtils.clamp(this.cam.want * f, 12, 95); },
       enabled: () => !modal.value,
     });
@@ -112,7 +113,7 @@ export class Engine {
     window.addEventListener('keydown', key); this.stops.push(() => window.removeEventListener('keydown', key));
 
     // a slow turn around the X behind the first screen
-    this.camTarget.copy(this.world.heroPos); this.cam.yaw = 0.6; this.loop(true);
+    this.camTarget.copy(this.world.heroPos); this.cam.yaw = this.cam.goalYaw = 0.6; this.loop(true);
   }
 
   private resize() {
@@ -130,7 +131,7 @@ export class Engine {
     this.player?.dispose();
     this.player = new Astronaut({ spec: defaultAvatar(role), jacket: role ? ROLE_INFO[role].color : undefined, marker: THEME.blue });
     this.world.scene.add(this.player.group);
-    this.cam.yaw = spawn === 'short' ? 0 : Math.PI / 2; this.cam.dist = 150; this.cam.want = 26; this.resize();
+    this.cam.yaw = this.cam.goalYaw = spawn === 'short' ? 0 : Math.PI / 2; this.cam.dist = 150; this.cam.want = 26; this.resize();
     this.firstPing = true; this.pingAt = 0; this.trailAt = 0;
     const a = me.value?.anchor;
     if (a && Date.now() - a.at < ARRIVAL_FRESH_MS) this.arriveAt(a.stationId, a.at); else if (a) this.arrivalSeen = a.at;
@@ -156,8 +157,8 @@ export class Engine {
   private tick(now: number, dt: number) {
     const t = now / 1000;
     this.world.update(t, dt);
-    if (this.player) { this.movePlayer(dt); this.proximity(now); this.updateTrail(now, t); this.sync(now); this.updateHolos(dt); }
-    else { this.cam.yaw += dt * 0.1; this.cam.dist += (64 - this.cam.dist) * Math.min(1, dt * 1.5); }
+    if (this.player) { this.movePlayer(dt); this.proximity(now); this.updateTrail(now, t); this.sync(now); this.updateHolos(now, dt); }
+    else { this.cam.goalYaw += dt * 0.1; this.cam.dist += (64 - this.cam.dist) * Math.min(1, dt * 1.5); }
     this.updatePing(dt); this.updateCamera(dt); this.updateLabels();
     this.renderer.render(this.world.scene, this.camera);
     this.adaptQuality(dt);
@@ -203,7 +204,7 @@ export class Engine {
     if (pose === this.pose) return;
     this.pose = pose; this.player?.setPose(pose, seatZ); this.pingAt = Math.min(this.pingAt, performance.now() - PING_MS + 120); // tell the others soon
   }
-  emote(pose: 'wave' | 'cheer' | 'dance') { if (!this.player) return; if (this.seat) this.stand(); this.setPose(pose); this.poseUntil = performance.now() + (pose === 'dance' ? 5200 : 2600); }
+  emote(pose: 'wave' | 'cheer' | 'dance', ms = pose === 'dance' ? 5200 : 2600) { if (!this.player) return; if (this.seat) this.stand(); this.setPose(pose); this.poseUntil = performance.now() + ms; }
   jump() { if (!this.player || this.jumpT < 1) return; if (this.seat) this.stand(); this.jumpT = 0; this.setPose('jump'); this.poseUntil = performance.now() + JUMP_S * 1000; }
 
   /** A seat is free if the quiet crowd is not in it and no player we can see is sitting there. */
@@ -319,7 +320,8 @@ export class Engine {
     const c = this.cam, riding = this.liftT < 1; if (riding) this.liftT = Math.min(1, this.liftT + dt / 1.5);
     const want = riding ? c.want + 95 * Math.sin(Math.PI * this.liftT) : c.want;
     c.dist += (want - c.dist) * Math.min(1, dt * (this.player ? (riding ? 5 : 2.2) : 1));
-    if (this.player) this.camTarget.lerp(toWorld(this.pos.x, this.pos.y, 1.2), Math.min(1, dt * (riding ? 2.6 : 6)));
+    c.yaw += (c.goalYaw - c.yaw) * Math.min(1, dt * 14); c.pitch += (c.goalPitch - c.pitch) * Math.min(1, dt * 14);
+    if (this.player) this.camTarget.lerp(toWorld(this.pos.x + this.vel.x * 0.22, this.pos.y + this.vel.y * 0.22, 1.2), Math.min(1, dt * (riding ? 2.6 : 5)));
     const cp = Math.cos(c.pitch), sp = Math.sin(c.pitch);
     this.camera.position.set(this.camTarget.x + Math.sin(c.yaw) * cp * c.dist, this.camTarget.y + sp * c.dist, this.camTarget.z + Math.cos(c.yaw) * cp * c.dist);
     this.camera.lookAt(this.camTarget);
@@ -361,7 +363,7 @@ export class Engine {
 
   /** Server checks distance against the position IT last saw, so report position first. */
   async stamp(b: Booth) {
-    try { await api.presence({ x: this.pos.x, y: this.pos.y, h: this.heading }); await api.stamp({ stationId: b.id, proof: 'virtual' }); }
+    try { await api.presence({ x: this.pos.x, y: this.pos.y, h: this.heading }); await api.stamp({ stationId: b.id, proof: 'virtual' }); this.emote('cheer', 1300); }
     catch (e) { toast(e instanceof ApiError ? e.message : 'Could not stamp', undefined, 'warn'); }
   }
 
@@ -401,20 +403,22 @@ export class Engine {
       if (!o) {
         const a = new Astronaut({ spec: defaultAvatar(h.cls), jacket: h.cls ? ROLE_INFO[h.cls].color : undefined }); this.world.scene.add(a.group);
         const label = Object.assign(document.createElement('div'), { className: 'lbl person', textContent: h.callsign }); this.host.appendChild(label);
-        o = { a, cls: h.cls, x: h.x, y: h.y, tx: h.x, ty: h.y, h: h.h, label, seen: now, sitting: false }; this.holos.set(h.id, o);
+        o = { a, cls: h.cls, track: new RemoteTrack({ t: now, x: h.x, y: h.y, h: h.h }), tx: h.x, ty: h.y, label, seen: now, sitting: false }; this.holos.set(h.id, o);
       }
       if (o.label.textContent !== h.callsign) o.label.textContent = h.callsign;
       const sitting = h.pose === 'sit', chair = sitting ? this.world.places.flatMap((p) => p.seats).find((s) => Math.hypot(s.x - h.x, s.y - h.y) < 0.8) : undefined;
-      o.a.setPose(h.pose ?? '', chair?.z); o.sitting = sitting; if (sitting) { o.x = h.x; o.y = h.y; }
-      o.tx = h.x; o.ty = h.y; o.h = h.h; o.seen = now;
+      o.a.setPose(h.pose ?? '', chair?.z); o.sitting = sitting;
+      const snap = { t: now, x: h.x, y: h.y, h: h.h }; if (sitting) o.track.place(snap); else o.track.push(snap);
+      o.tx = h.x; o.ty = h.y; o.seen = now;
     }
     for (const [id, o] of this.holos) if (now - o.seen > PING_MS * 3) { o.a.dispose(); o.label.remove(); this.holos.delete(id); }
   }
 
-  private updateHolos(dt: number) {
+  /** Other people glide at constant speed between the positions we hear about (remote.ts), and walk at the pace they move. */
+  private updateHolos(now: number, dt: number) {
     for (const o of this.holos.values()) {
-      const dx = o.tx - o.x, dy = o.ty - o.y, k = Math.min(1, dt * 2.5); o.x += dx * k; o.y += dy * k;
-      toWorld(o.x, o.y, 0, o.a.group.position); o.a.group.rotation.y = o.h; o.a.animate(dt, Math.min(1, Math.hypot(dx, dy) / 3));
+      const r = o.track; r.step(now, dt);
+      toWorld(r.x, r.y, 0, o.a.group.position); o.a.group.rotation.y = r.h; o.a.animate(dt, Math.min(1, r.speed / RUN_SPEED));
     }
   }
 
@@ -437,7 +441,7 @@ export class Engine {
     const hero = this.labelEls.find((x) => x.l.kind === 'hero'); if (hero) place(hero.el, hero.l.pos, 0, true);
     for (const s of this.boothEls) { if (s.booth) place(s.el, s.pos, 52); else s.el.style.opacity = '0'; }
     const p = new THREE.Vector3();
-    for (const o of this.holos.values()) place(o.label, toWorld(o.x, o.y, 2.9, p), 40);
+    for (const o of this.holos.values()) place(o.label, toWorld(o.track.x, o.track.y, 2.9, p), 40);
     for (const { el, l } of this.labelEls) if (l.kind !== 'hero') place(el, l.pos, l.kind === 'gate' ? 110 : 80);
   }
 
