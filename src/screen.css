@@ -1,4 +1,5 @@
 /* The booth's big screen: read from across an aisle — big type, few words, nothing interactive. Same tokens as the game. */
+html:root{--ui:1} /* The big screen sizes itself from the wall it is on (vw / vh): it does not take the interface scale. */
 .mc{position:absolute;inset:0;display:grid;grid-template:auto 1fr auto / minmax(260px,22vw) 1fr minmax(240px,20vw);gap:2vh 2vw;padding:3vh 2.4vw;pointer-events:none!important;font-size:clamp(14px,1.25vw,24px)}
 .mc header{grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;gap:2vw}
 .mc-brand{display:flex;align-items:center;gap:.7em;font-weight:700;font-size:1.2em}.mc-brand i{width:1px;height:1em;background:var(--line-2)}.mc-brand b{color:var(--blue)}

@@ -71,4 +71,24 @@ green. The rules still count every cell as its own booth.
   Radii 10 / 14 / 22. One shadow. Motion 120–240 ms, off with "reduce motion".
 - The brand wordmark appears on the first screen and the big screen — not over the game.
 
+### With a mouse
+
+The game is built for a thumb first. On a desk it must not feel like a phone page in a big window:
+
+- **Things answer before they are pressed.** Every control has a hover state (a step darker, or blue for the round
+  dock buttons). Hover rules live inside `@media (hover:hover) and (pointer:fine)` — on a phone a hover state sticks to
+  the last thing tapped, so phones get none.
+- **The cursor says what a press will do**: an open hand over the world (drag to look around), a closed hand while
+  dragging, a pointing hand over a booth or the X.
+- **Point at a booth**: a blue frame on its roof line, a light blue wash, and a dark tag with its number and exhibitor.
+  **Press it**: the astronaut walks to its front, the frame stays until they arrive, and the Stamp button is for that
+  booth — not whichever neighbour is a hand closer. Press the booth you are standing at: its sheet opens. Press the X:
+  walk to its counter. The same press works with a finger. Picking is worked out from the floor plan
+  (`src/game/pick.ts`), front-most booth first, so nothing is picked through the booth in front of it.
+- **Keys are written on the buttons** (`<kbd>`, shown only with a mouse): E on the action button, 1 2 3 and Space in
+  the express tray, M in the map tooltip. The round buttons have instant dark tooltips instead of the browser's.
+- **One interface scale** (`--ui` in `ui.css`): 1 up to a laptop, 1.15 from 1700 × 880, 1.3 from 2300 × 1180. The whole
+  interface and the labels in the world grow together; `--vw` / `--vh` are the screen in grown pixels, and everything
+  sized from the screen uses them. The crew console and the big screen opt out.
+
 The crew console, the big screen and the public card page use the same tokens.

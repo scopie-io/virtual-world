@@ -1,11 +1,14 @@
 // One-thumb controls: a floating joystick in the lower-left, tap-to-walk anywhere, drag to look around, pinch / wheel to zoom.
-// Desktop: WASD / arrows, click to walk, drag to look around, wheel to zoom.
+// Desktop: WASD / arrows, click to walk, drag to look around, wheel to zoom. A mouse that is only pointing is reported
+// too (onHover), and the cursor says what a press would do: grab the view, or pick the thing under it.
 //
 // A touch in the joystick zone is not a joystick until the thumb actually moves: lifted in place, it is a tap like any
 // other — so "tap where you want to go" works on the whole screen, including under the thumb.
 
 export interface InputSink {
   onTap(x: number, y: number): void; onOrbit(dYaw: number, dPitch: number): void; onZoom(factor: number): void;
+  /** a mouse resting or moving over the world without a button down; null when it leaves */
+  onHover?(at: { x: number; y: number } | null): void;
   /** false while a sheet is open: the world does not listen to the keyboard then */
   enabled(): boolean;
 }
@@ -20,6 +23,7 @@ export class Input {
   private stick: { id: number; x: number; y: number; t: number; live: boolean } | null = null;
   private drags = new Map<number, { x: number; y: number; sx: number; sy: number; t: number; moved: boolean }>();
   private pinch = 0;
+  private cursor = 'grab'; private grabbing = false;
   private base: HTMLDivElement; private knob: HTMLDivElement;
   private off: (() => void)[] = [];
 
@@ -33,6 +37,7 @@ export class Input {
     on(el, 'pointermove', (e: PointerEvent) => this.moveEv(e));
     on(el, 'pointerup', (e: PointerEvent) => this.up(e));
     on(el, 'pointercancel', (e: PointerEvent) => this.up(e, true));
+    on(el, 'pointerleave', (e: PointerEvent) => { if (e.pointerType === 'mouse') sink.onHover?.(null); });
     on(el, 'wheel', (e: WheelEvent) => { e.preventDefault(); sink.onZoom(Math.exp(e.deltaY * 0.0012)); }, { passive: false });
     on(el, 'contextmenu', (e: Event) => e.preventDefault());
     on(window, 'keydown', (e: KeyboardEvent) => { if (typing(e.target) || !sink.enabled()) return; this.keys.add(e.code); this.fromKeys(); });
@@ -41,9 +46,13 @@ export class Input {
     on(document, 'visibilitychange', () => { if (document.hidden) this.release(); });
   }
 
+  /** What the mouse cursor looks like over the world when nothing is being dragged: 'grab', or 'pointer' over something that can be picked. */
+  setCursor(c: 'grab' | 'pointer') { this.cursor = c; this.paintCursor(); }
+  private paintCursor() { const c = this.grabbing ? 'grabbing' : this.cursor; if (this.el.style.cursor !== c) this.el.style.cursor = c; }
+
   /** Let go of everything: a sheet opened, the tab went away. Nobody keeps walking because a key-up was never heard. */
   release() {
-    this.keys.clear(); this.drags.clear(); this.pinch = 0;
+    this.keys.clear(); this.drags.clear(); this.pinch = 0; this.grabbing = false; this.paintCursor();
     if (this.stick) { this.stick = null; this.base.style.display = 'none'; }
     this.move.x = this.move.y = 0;
   }
@@ -78,9 +87,9 @@ export class Input {
       this.move.x = l ? (dx / l) * mag : 0; this.move.y = l ? (-dy / l) * mag : 0;
       return;
     }
-    const d = this.drags.get(e.pointerId); if (!d) return;
+    const d = this.drags.get(e.pointerId); if (!d) { if (e.pointerType === 'mouse' && !e.buttons) this.sink.onHover?.({ x: e.clientX, y: e.clientY }); return; }
     const dx = e.clientX - d.x, dy = e.clientY - d.y; d.x = e.clientX; d.y = e.clientY;
-    if (Math.hypot(d.x - d.sx, d.y - d.sy) > TAP_SLOP) d.moved = true;
+    if (Math.hypot(d.x - d.sx, d.y - d.sy) > TAP_SLOP) { d.moved = true; if (e.pointerType === 'mouse' && !this.grabbing) { this.grabbing = true; this.paintCursor(); this.sink.onHover?.(null); } }
     if (this.drags.size === 2) { const p = this.pinchDist(); if (this.pinch && p) this.sink.onZoom(this.pinch / p); this.pinch = p; }
     else if (d.moved) this.sink.onOrbit(-dx * 0.006, dy * 0.004);
   }
@@ -93,6 +102,7 @@ export class Input {
       return;
     }
     const d = this.drags.get(e.pointerId); this.drags.delete(e.pointerId); this.pinch = 0;
+    if (this.grabbing && this.drags.size === 0) { this.grabbing = false; this.paintCursor(); if (!cancelled) this.sink.onHover?.({ x: e.clientX, y: e.clientY }); }
     if (d && !cancelled && !d.moved && performance.now() - d.t < TAP_MS && this.drags.size === 0) this.sink.onTap(e.clientX, e.clientY);
   }
 

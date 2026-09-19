@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { LevelData, StationView } from '../../shared/types';
+import type { LevelData, StationView, Booth } from '../../shared/types';
 import { Astronaut } from './astronaut';
 import { defaultAvatar } from '../../shared/avatar';
 import { THEME, css } from '../theme';
@@ -214,6 +214,26 @@ export class World {
     });
     geo.setAttribute('aUv', new THREE.InstancedBufferAttribute(uv, 4)); geo.setAttribute('aFade', new THREE.InstancedBufferAttribute(fade, 1));
     mesh.count = fit.length; mesh.frustumCulled = false; mesh.renderOrder = 6; this.scene.add(mesh);
+  }
+
+  /**
+   * A blue frame on the roof line and a light wash over the walls: "this one". Two of them exist — the booth under the
+   * mouse, and the booth the player asked to walk to. Blue, because it is something you can do.
+   */
+  private marks: Partial<Record<'hover' | 'goal', THREE.Group>> = {};
+  mark(kind: 'hover' | 'goal', b: Booth | null) {
+    let g = this.marks[kind];
+    if (!b) { if (g) g.visible = false; return; }
+    const { w: BW, d: BD, h: BH } = this.level.booth;
+    if (!g) {
+      g = new THREE.Group(); const blue = new THREE.MeshBasicMaterial({ color: THEME.blue }), T = 0.16;
+      const wash = new THREE.Mesh(new THREE.BoxGeometry(BW + 0.04, BH, BD + 0.04), new THREE.MeshBasicMaterial({ color: THEME.blue, transparent: true, opacity: kind === 'goal' ? 0.2 : 0.12, depthWrite: false })); wash.position.y = BH / 2 + 0.01;
+      const bar = (w: number, d: number, x: number, z: number) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, d), blue); m.position.set(x, BH + 0.2, z); return m; }; // over the roof name, under the pin
+      g.add(wash, bar(BW + T, T, 0, -BD / 2), bar(BW + T, T, 0, BD / 2), bar(T, BD - T, -BW / 2, 0), bar(T, BD - T, BW / 2, 0));
+      g.renderOrder = 7; this.marks[kind] = g; this.scene.add(g);
+    }
+    const deck = this.level.decks.find((d) => d.level === b.deck);
+    toWorld(b.x, b.y, 0, g.position); g.scale.set(1, 1, (deck?.boothD ?? BD) / BD); g.visible = true;
   }
 
   /** The live list of booths that exhibitors have brought online. */

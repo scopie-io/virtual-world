@@ -152,30 +152,30 @@ function Hud({ engine }: Eng) {
       {/* bottom-right, under the thumb: the three things you can always do */}
       <div class="dock">
         <DemoChip />
-        <button aria-label="Map and search" title="Map" onClick={() => (modal.value = 'map')}><Icon d={ICONS.map} /></button>
+        <button aria-label="Map and search" data-tip="Map and search · M" onClick={() => (modal.value = 'map')}><Icon d={ICONS.map} /></button>
         <div class="express">
           {tray && (
             <div class="tray" role="menu">
-              <button role="menuitem" onClick={express(() => eng?.emote('wave'))}>Wave</button><button role="menuitem" onClick={express(() => eng?.emote('cheer'))}>Cheer</button>
-              <button role="menuitem" onClick={express(() => eng?.emote('dance'))}>Dance</button><button role="menuitem" onClick={express(() => eng?.jump())}>Jump</button>
+              <button role="menuitem" onClick={express(() => eng?.emote('wave'))}>Wave<kbd>1</kbd></button><button role="menuitem" onClick={express(() => eng?.emote('cheer'))}>Cheer<kbd>2</kbd></button>
+              <button role="menuitem" onClick={express(() => eng?.emote('dance'))}>Dance<kbd>3</kbd></button><button role="menuitem" onClick={express(() => eng?.jump())}>Jump<kbd>Space</kbd></button>
               <button role="menuitem" onClick={express(() => void eng?.photo())}>Photo</button>
             </div>
           )}
-          <button aria-label="Express yourself" aria-expanded={tray} title="Wave, cheer, dance, jump, photo" class={tray ? 'on' : ''} onClick={() => setTray(!tray)}><Icon d={ICONS.express} /></button>
+          <button aria-label="Express yourself" aria-expanded={tray} data-tip="Wave, cheer, dance, jump, photo" class={tray ? 'on' : ''} onClick={() => setTray(!tray)}><Icon d={ICONS.express} /></button>
         </div>
-        <button aria-label="Menu" title="Menu" onClick={() => (modal.value = 'menu')}><Icon d={ICONS.menu} /></button>
+        <button aria-label="Menu" data-tip="Menu" onClick={() => (modal.value = 'menu')}><Icon d={ICONS.menu} /></button>
       </div>
 
       {/* bottom-centre: the one thing you can do right here */}
       <div class="action">
         {sitting && <SeatNote />}
-        {sitting && <button class="btn big" onClick={() => eng?.stand()}>Stand up</button>}
+        {sitting && <button class="btn big" onClick={() => eng?.stand()}>Stand up<kbd>E</kbd></button>}
         {nearLift.value && <div class="liftrow">{nearLift.value.others.map((l) => <button key={l.deck} class="btn lift" onClick={() => engine()?.useLift(l)}>Level {l.deck}<small>{level.value?.decks.find((d) => d.level === l.deck)?.label.split(' · ')[1]}</small></button>)}</div>}
         {atLaunchPad.value && !m.passport && <button class="btn primary big" onClick={() => (modal.value = 'card')}>Get my free card</button>}
         {atLaunchPad.value && m.passport && !m.docked && <button class="btn primary big" onClick={() => (modal.value = 'prize')}>Show my prize code</button>}
-        {!sitting && place?.verb === 'photo' && <button class="btn primary big" onClick={() => void eng?.photo()}>Take a photo</button>}
-        {!sitting && (place?.verb === 'sit' || place?.verb === 'watch') && !(st && !has) && <button class="btn primary big" onClick={() => eng?.sit()}>{place.verb === 'watch' ? 'Sit and watch' : 'Sit down'}</button>}
-        {!atLaunchPad.value && st && !has && <button class="btn primary big" disabled={stamping} onClick={doStamp}>{stamping ? 'Stamping…' : `Stamp · +${POINTS.stamp}`}</button>}
+        {!sitting && place?.verb === 'photo' && <button class="btn primary big" onClick={() => void eng?.photo()}>Take a photo<kbd>E</kbd></button>}
+        {!sitting && (place?.verb === 'sit' || place?.verb === 'watch') && !(st && !has) && <button class="btn primary big" onClick={() => eng?.sit()}>{place.verb === 'watch' ? 'Sit and watch' : 'Sit down'}<kbd>E</kbd></button>}
+        {!atLaunchPad.value && st && !has && <button class="btn primary big" disabled={stamping} onClick={doStamp}>{stamping ? 'Stamping…' : `Stamp · +${POINTS.stamp}`}{!stamping && <kbd>E</kbd>}</button>}
         {!atLaunchPad.value && st && (
           <button class={'chip' + (has ? ' on' : '')} onClick={() => { panelStation.value = st; modal.value = 'booth'; }}>{stName}{view ? (view.hosted ? ' · at the counter now' : ' · online') : ''} ›</button>
         )}

@@ -1,4 +1,5 @@
 /* Crew console: a working tool on the same tokens as the game (ui.css). */
+html:root{--ui:1} /* A working tool on a laptop: no interface scale. */
 body.crew{overflow:auto;background:var(--paper)}
 .console{max-width:1040px;margin:0 auto;padding:16px}.console.center{min-height:100dvh;display:grid;place-items:center}
 .console header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}

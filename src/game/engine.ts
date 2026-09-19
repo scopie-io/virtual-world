@@ -10,9 +10,10 @@ import { Astronaut } from './astronaut';
 import { Input } from './input';
 import { placeAt, taken, type Seat } from './places';
 import { RemoteTrack } from './remote';
+import { BoothPicker } from './pick';
 import { hallCards, hallLine } from './facts';
 import { api, ApiError } from '../net/api';
-import { atLaunchPad, currentDeck, distToGoal, goalVia, guideOn, guideTarget, herePlace, markSeen, me, modal, nearLift, nearStation, online, photoShot, seated, stampedSet, stationMap, stations, toast } from '../state';
+import { atLaunchPad, currentDeck, distToGoal, goalVia, guideOn, guideTarget, herePlace, markSeen, me, modal, nearLift, nearStation, online, panelStation, photoShot, seated, stampedSet, stationMap, stations, toast } from '../state';
 
 const RUN_SPEED = 6.5;          // m/s — brisk on purpose: halls are long
 const ACCEL = 9;                // how quickly the astronaut reaches that speed, and stops: a little weight
@@ -53,10 +54,16 @@ export class Engine {
   private buckets = new Map<string, Booth[]>();
   private running = false; private last = 0; private pingAt = 0; private proxAt = 0; private firstPing = true; private arrivalSeen = 0;
   private fps = { acc: 0, n: 0, dpr: 1 };
+  private ui = 1; // the interface scale from ui.css (--ui): label boxes grow with the type
   private vel = { x: 0, y: 0 };
   private pose: Pose = ''; private poseUntil = 0; private jumpT = 1; private seat: Seat | null = null; private wantBeforeSit = 30;
   private liftT = 1; private hallNow: number | null = null;
   private seatGoal: Seat | null = null;
+  private picker: BoothPicker;
+  private mouse: { x: number; y: number } | null = null; private hoverAt = 0;
+  private hover: { booth: Booth; el: HTMLDivElement; pos: THREE.Vector3 } | null = null; private hoverEl: HTMLDivElement;
+  /** the booth the player pressed: walked to, framed until they get there, and preferred over its neighbours once they do */
+  private picked: Booth | null = null;
   private halls: ReturnType<typeof hallCards>;
   private stops: (() => void)[] = [];
 
@@ -71,6 +78,7 @@ export class Engine {
     this.world = new World(level);
     this.halls = hallCards(level);
     this.nav = new NavGrid(level);
+    this.picker = new BoothPicker(level);
     for (const b of level.booths) { const k = `${Math.floor(b.x / 6)},${Math.floor(b.y / 6)}`; (this.buckets.get(k) ?? this.buckets.set(k, []).get(k)!).push(b); }
 
     const onFloor = { depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 } as const;
@@ -81,6 +89,7 @@ export class Engine {
 
     this.input = new Input(this.renderer.domElement, {
       onTap: (x, y) => this.tapMove(x, y),
+      onHover: (at) => { this.mouse = at; this.hoverAt = 0; },
       onOrbit: (dYaw, dPitch) => { this.cam.goalYaw += dYaw; this.cam.goalPitch = THREE.MathUtils.clamp(this.cam.goalPitch + dPitch, 0.62, 1.32); }, // from a low three-quarter view to almost straight down
       onZoom: (f) => { this.cam.want = THREE.MathUtils.clamp(this.cam.want * f, 12, 95); },
       enabled: () => !modal.value,
@@ -91,6 +100,7 @@ export class Engine {
       const el = Object.assign(document.createElement('div'), { className: `lbl ${l.kind}`, textContent: l.text });
       host.appendChild(el); this.labelEls.push({ el, l });
     }
+    this.hoverEl = Object.assign(document.createElement('div'), { className: 'lbl booth tip' }); host.appendChild(this.hoverEl);
     for (let i = 0; i < BOOTH_LABELS; i++) { const el = Object.assign(document.createElement('div'), { className: 'lbl booth' }); host.appendChild(el); this.boothEls.push({ el, booth: null, pos: new THREE.Vector3() }); }
 
     const ro = new ResizeObserver(() => this.resize()); ro.observe(host); this.stops.push(() => ro.disconnect()); this.resize();
@@ -119,6 +129,7 @@ export class Engine {
   private resize() {
     const w = this.host.clientWidth || innerWidth, h = this.host.clientHeight || innerHeight;
     this.renderer.setSize(w, h); this.camera.aspect = w / h; this.camera.fov = w < h ? 50 : 42;
+    this.ui = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
     // Behind the first screen the sheet covers the lower part of a phone: shift the picture up so the X sits in what is left.
     if (!this.player && w < h) this.camera.setViewOffset(w, h, 0, Math.round(h * 0.17), w, h); else this.camera.clearViewOffset();
     this.camera.updateProjectionMatrix();
@@ -159,7 +170,7 @@ export class Engine {
     this.world.update(t, dt);
     if (this.player) { this.movePlayer(dt); this.proximity(now); this.updateTrail(now, t); this.sync(now); this.updateHolos(now, dt); }
     else { this.cam.goalYaw += dt * 0.1; this.cam.dist += (64 - this.cam.dist) * Math.min(1, dt * 1.5); }
-    this.updatePing(dt); this.updateCamera(dt); this.updateLabels();
+    this.updatePing(dt); this.updateCamera(dt); this.pointAt(now); this.updateLabels();
     this.renderer.render(this.world.scene, this.camera);
     this.adaptQuality(dt);
   }
@@ -273,16 +284,57 @@ export class Engine {
     photoShot.value = c.toDataURL('image/jpeg', 0.9); modal.value = 'photo'; api.track('photo', { place: herePlace.value?.id ?? null });
   }
 
+  private rayAt(cx: number, cy: number): THREE.Ray {
+    const r = this.renderer.domElement.getBoundingClientRect(), ndc = new THREE.Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+    const ray = new THREE.Raycaster(); ray.setFromCamera(ndc, this.camera); return ray.ray;
+  }
+  /** The booth under a point of the screen (pick.ts works in plan space: x east, y north, z up). */
+  private boothAt(cx: number, cy: number): Booth | null {
+    const { origin: o, direction: d } = this.rayAt(cx, cy);
+    return this.picker.pick({ ox: o.x + 95, oy: 72 - o.z, oz: o.y, dx: d.x, dy: -d.z, dz: d.y });
+  }
+
   private tapMove(cx: number, cy: number) {
     if (!this.player) return;
-    const r = this.renderer.domElement.getBoundingClientRect(), ndc = new THREE.Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
-    const ray = new THREE.Raycaster(); ray.setFromCamera(ndc, this.camera);
-    const hit = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3()); if (!hit) return;
+    const booth = this.boothAt(cx, cy); if (booth) return this.goToBooth(booth);
+    const hit = this.rayAt(cx, cy).intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3()); if (!hit) return;
+    this.pick(null); this.walkTo({ x: hit.x + 95, y: 72 - hit.z });
+  }
+  private walkTo(to: P2): boolean {
     if (this.seat) this.stand();
     this.seatGoal = null;
-    const path = this.nav.path(this.pos, { x: hit.x + 95, y: 72 - hit.z }); if (!path) return;
+    const path = this.nav.path(this.pos, to); if (!path) return false;
     this.route = path.slice(1);
     const end = path[path.length - 1]!; toWorld(end.x, end.y, 0.04, this.ping.mesh.position); this.ping.t = 0; // "understood: going there"
+    return true;
+  }
+  private pick(b: Booth | null) { this.picked = b; this.world.mark('goal', b); }
+
+  /**
+   * A press on a booth: walk up to it. On arrival the Stamp button is for that booth, not whichever neighbour is a
+   * hand closer. Pressing the booth you are already standing at opens it; pressing the X walks to its counter.
+   */
+  private goToBooth(b: Booth) {
+    if (b.id === this.level.hero.id) { this.pick(null); this.walkTo(this.level.hero.dock); return; }
+    if (nearStation.value?.id === b.id && !this.route.length) { panelStation.value = b; modal.value = 'booth'; return; }
+    const { w, d } = this.level.booth, off = (k: number) => k / 2 + 1.1, dist = (p: P2) => Math.hypot(p.x - this.pos.x, p.y - this.pos.y);
+    const fronts = [{ x: b.x, y: b.y - off(d) }, { x: b.x, y: b.y + off(d) }, { x: b.x - off(w), y: b.y }, { x: b.x + off(w), y: b.y }].filter((p) => this.nav.walkable(p.x, p.y)).sort((p, q) => dist(p) - dist(q));
+    const to = fronts[0] ?? this.nav.nearestWalkable(b.x, b.y, 10); if (!to) return;
+    if (this.walkTo(to)) this.pick(b);
+  }
+
+  /** Desktop: what the mouse is resting on. Looked up a few times a second — the view moves under a still mouse too. */
+  private pointAt(now: number) {
+    if (now - this.hoverAt < 90) return; this.hoverAt = now;
+    const b = this.mouse && this.player && !modal.value ? this.boothAt(this.mouse.x, this.mouse.y) : null;
+    if (b?.id === this.hover?.booth.id) return;
+    this.input.setCursor(b ? 'pointer' : 'grab');
+    const hero = b?.id === this.level.hero.id; // the X has its own sign; the cursor is enough
+    this.world.mark('hover', b && !hero ? b : null);
+    if (!b || hero) { this.hover = b ? { booth: b, el: this.hoverEl, pos: new THREE.Vector3() } : null; this.hoverEl.style.opacity = '0'; return; }
+    const st = stationMap.value.get(b.id), name = st?.company || b.name;
+    this.hoverEl.textContent = name ? `${b.id} · ${name}` : `Booth ${b.id}`; this.hoverEl.classList.toggle('online', !!st);
+    this.hover = { booth: b, el: this.hoverEl, pos: toWorld(b.x, b.y, this.level.booth.h + (st ? 2.7 : 1.5)) };
   }
 
   private updatePing(dt: number) {
@@ -337,7 +389,13 @@ export class Engine {
       const d = Math.hypot(b.x - this.pos.x, b.y - this.pos.y); if (d < BOOTH_LABEL_RANGE) around.push({ b, d });
     }
     around.sort((a, b) => a.d - b.d);
-    const best = around[0] && around[0].d < STAMP_RADIUS_M - 0.6 ? around[0].b : null;
+    let best = around[0] && around[0].d < STAMP_RADIUS_M - 0.6 ? around[0].b : null;
+    const pk = this.picked;
+    if (pk) {
+      const d = Math.hypot(pk.x - this.pos.x, pk.y - this.pos.y);
+      if (d < STAMP_RADIUS_M - 0.6) best = pk;
+      if (!this.route.length) { this.world.mark('goal', null); if (d > STAMP_RADIUS_M + 2) this.picked = null; } // arrived, or walked off on the stick
+    }
     if (nearStation.value?.id !== best?.id) nearStation.value = best;
 
     // Every stand has its name on its roof. A floating label marks the ones whose exhibitor is in the game right now.
@@ -432,14 +490,15 @@ export class Engine {
       let vis = v.z < 1 && Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.05 && (always || d < maxD);
       const x = Math.round((v.x * 0.5 + 0.5) * w), y = Math.round((-v.y * 0.5 + 0.5) * h);
       if (vis) {
-        const hw = (el.textContent?.length ?? 8) * 3.6 + 14, box: [number, number, number, number] = [x - hw, y - 11, x + hw, y + 11];
+        const hw = ((el.textContent?.length ?? 8) * 3.6 + 14) * this.ui, hh = 11 * this.ui, box: [number, number, number, number] = [x - hw, y - hh, x + hw, y + hh];
         if (taken.some((t) => box[0] < t[2] && box[2] > t[0] && box[1] < t[3] && box[3] > t[1])) vis = false; else taken.push(box);
       }
       el.style.opacity = vis ? String(always ? 1 : THREE.MathUtils.clamp((maxD - d) / (maxD * 0.25), 0, 1)) : '0';
       if (vis) el.style.transform = `translate(-50%,-50%) translate(${x}px,${y}px)`;
     };
     const hero = this.labelEls.find((x) => x.l.kind === 'hero'); if (hero) place(hero.el, hero.l.pos, 0, true);
-    for (const s of this.boothEls) { if (s.booth) place(s.el, s.pos, 52); else s.el.style.opacity = '0'; }
+    if (this.hover && this.hover.booth.id !== this.level.hero.id) place(this.hover.el, this.hover.pos, 0, true);
+    for (const s of this.boothEls) { if (s.booth && s.booth !== this.hover?.booth) place(s.el, s.pos, 52); else s.el.style.opacity = '0'; }
     const p = new THREE.Vector3();
     for (const o of this.holos.values()) place(o.label, toWorld(o.track.x, o.track.y, 2.9, p), 40);
     for (const { el, l } of this.labelEls) if (l.kind !== 'hero') place(el, l.pos, l.kind === 'gate' ? 110 : 80);
