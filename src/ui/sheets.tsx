@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Engine } from '../game/engine';
+import { setSound, soundOn } from '../sfx';
 import { api, ApiError } from '../net/api';
 import { handleScan } from '../scan';
 import { Camera, FieldPicker, Qr, Sheet, hex, useCountdown } from './common';
@@ -303,6 +304,7 @@ export function MenuSheet() {
         <button onClick={go('map')}><strong>Map</strong><small>All three levels · search · places to go</small></button>
         <button onClick={go('board')}><strong>Leaderboard</strong><small>Top players · most visited booths</small></button>
         <button onClick={go('rules')}><strong>How to play</strong><small>The mission and the points, on one page</small></button>
+        <button aria-pressed={soundOn.value} onClick={() => setSound(!soundOn.value)}><strong>Sound · {soundOn.value ? 'on' : 'off'}</strong><small>{soundOn.value ? 'Quiet chimes, and a buzz on phones that can' : 'Silent, no vibration'}</small></button>
         <button onClick={switchRole}><strong>{m.cls === 'exhibitor' ? 'Play as a visitor' : 'I am exhibiting'}</strong><small>{m.cls === 'exhibitor' ? 'Do the five-chapter mission' : 'Put your booth in the game'}</small></button>
       </div>
     </Sheet>

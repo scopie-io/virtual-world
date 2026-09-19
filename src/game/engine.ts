@@ -13,6 +13,7 @@ import { RemoteTrack } from './remote';
 import { BoothPicker } from './pick';
 import { hallCards, hallLine } from './facts';
 import { api, ApiError } from '../net/api';
+import { sfx } from '../sfx';
 import { atLaunchPad, currentDeck, distToGoal, goalVia, guideOn, guideTarget, herePlace, markSeen, me, modal, nearLift, nearStation, online, panelStation, photoShot, seated, stampedSet, stationMap, stations, toast } from '../state';
 
 const RUN_SPEED = 6.5;          // m/s — brisk on purpose: halls are long
@@ -216,7 +217,7 @@ export class Engine {
     this.pose = pose; this.player?.setPose(pose, seatZ); this.pingAt = Math.min(this.pingAt, performance.now() - PING_MS + 120); // tell the others soon
   }
   emote(pose: 'wave' | 'cheer' | 'dance', ms = pose === 'dance' ? 5200 : 2600) { if (!this.player) return; if (this.seat) this.stand(); this.setPose(pose); this.poseUntil = performance.now() + ms; }
-  jump() { if (!this.player || this.jumpT < 1) return; if (this.seat) this.stand(); this.jumpT = 0; this.setPose('jump'); this.poseUntil = performance.now() + JUMP_S * 1000; }
+  jump() { if (!this.player || this.jumpT < 1) return; if (this.seat) this.stand(); this.jumpT = 0; sfx('jump'); this.setPose('jump'); this.poseUntil = performance.now() + JUMP_S * 1000; }
 
   /** A seat is free if the quiet crowd is not in it and no player we can see is sitting there. */
   private freeSeats(pl: NonNullable<typeof herePlace.value>): Seat[] {
@@ -237,7 +238,7 @@ export class Engine {
     this.seatGoal = null;
     const pl = herePlace.value; if (pl && !this.freeSeats(pl).includes(s)) { this.sit(); return; } // someone got there first: the next one
     this.seat = s; this.pos = { x: s.x, y: s.y }; this.heading = s.h; this.route = []; this.vel.x = this.vel.y = 0;
-    this.setPose('sit', s.z); seated.value = true; this.wantBeforeSit = this.cam.want; this.cam.want = Math.min(this.cam.want, 15);
+    this.setPose('sit', s.z); sfx('sit'); seated.value = true; this.wantBeforeSit = this.cam.want; this.cam.want = Math.min(this.cam.want, 15);
   }
   stand() {
     if (!this.seat) return;
@@ -271,7 +272,7 @@ export class Engine {
     toWorld(this.pos.x, this.pos.y, 0, p.group.position); p.group.rotation.y = this.heading; p.setPose('wave'); p.animate(0.2, 0);
     const size = r.getSize(new THREE.Vector2()), pr = r.getPixelRatio(), trail = this.trail.visible;
     this.trail.visible = false; this.ping.mesh.visible = false;
-    r.setPixelRatio(1); r.setSize(W, H, false); r.render(this.world.scene, cam);
+    sfx('shutter'); r.setPixelRatio(1); r.setSize(W, H, false); r.render(this.world.scene, cam);
     const shot = await createImageBitmap(r.domElement).catch(() => null);
     r.setPixelRatio(pr); r.setSize(size.x, size.y, false); this.trail.visible = trail; p.setPose(this.pose);
     if (!shot) { toast('Could not take the photo on this device', undefined, 'warn'); return; }
@@ -305,7 +306,7 @@ export class Engine {
     this.seatGoal = null;
     const path = this.nav.path(this.pos, to); if (!path) return false;
     this.route = path.slice(1);
-    const end = path[path.length - 1]!; toWorld(end.x, end.y, 0.04, this.ping.mesh.position); this.ping.t = 0; // "understood: going there"
+    const end = path[path.length - 1]!; toWorld(end.x, end.y, 0.04, this.ping.mesh.position); this.ping.t = 0; sfx('go'); // "understood: going there"
     return true;
   }
   private pick(b: Booth | null) { this.picked = b; this.world.mark('goal', b); }
@@ -358,6 +359,7 @@ export class Engine {
   /** Ride a lift: the same shaft on another level. A lift ride is the one jump the server accepts away from the entrance. */
   useLift(to: Lift) {
     if (this.seat) this.stand();
+    sfx(to.deck > this.levelOf(this.pos) ? 'liftUp' : 'liftDown');
     this.pos = this.nav.nearestWalkable(to.x, to.y + 1.5) ?? { x: to.x, y: to.y }; this.route = []; this.heading = Math.PI; this.vel.x = this.vel.y = 0;
     this.firstPing = true; this.pingAt = 0; this.trailAt = 0; this.liftT = 0; // the camera rises, crosses to the other level and comes back down
     toast(`Level ${to.deck}`, this.level.decks.find((d) => d.level === to.deck)?.label.split(' · ')[1] ?? '', 'info', 2600);

@@ -91,4 +91,22 @@ The game is built for a thumb first. On a desk it must not feel like a phone pag
   interface and the labels in the world grow together; `--vw` / `--vh` are the screen in grown pixels, and everything
   sized from the screen uses them. The crew console and the big screen opt out.
 
+### Sound and touch
+
+Ten sounds, all made in the browser (`src/sfx.ts`) from sine and triangle waves on one five-note scale — no audio
+files, nothing to license, everything in tune with everything else. A sound marks something that happened; there is no
+music, no loop, no ambience.
+
+| sound | when |
+| --- | --- |
+| tap | any button |
+| go | the floor or a booth was pressed: "going there" |
+| stamp (two rising notes) + a 14 ms buzz | points were earned |
+| big (four-note rise) + a double buzz | your card, a swap, your booth online, the prize claimed |
+| warn (two falling notes) | a red toast |
+| jump, sit, shutter, lift up / lift down | what they say |
+
+Silent until the player has touched the page. One switch in the menu ("Sound · on / off") covers sound and vibration
+and is remembered. A phone on silent stays silent. Vibration exists on Android only; iPhones ignore it.
+
 The crew console, the big screen and the public card page use the same tokens.

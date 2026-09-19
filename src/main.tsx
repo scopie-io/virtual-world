@@ -6,12 +6,14 @@ import { api, ApiError } from './net/api';
 import { handleScan } from './scan';
 import { ensureBackend } from './demo/client';
 import { installBack } from './ui/back';
+import { installSfx } from './sfx';
 import { bootError, bootNote, drop, level, me, myBooths, phase, stations } from './state';
 import type { LevelData } from '../shared/types';
 
 let engine: Engine | null = null;
 render(<App engine={() => engine} />, document.getElementById('ui')!);
 installBack();
+installSfx();
 
 /** What every client keeps fresh: which booths are online, today's special booth, and — for exhibitors — their own numbers. */
 function poll() {

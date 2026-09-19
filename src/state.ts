@@ -2,6 +2,7 @@ import { signal, computed } from '@preact/signals';
 import type { Booth, DailyDrop, HostStation, LevelData, Lift, Me, StationView, XpEvent } from '../shared/types';
 import { boothSteps, chapters, type Chapter } from '../shared/rules';
 import type { Place } from './game/places';
+import { buzz, sfx } from './sfx';
 
 export type Phase = 'boot' | 'start' | 'play' | 'error';
 export type Modal = null | 'card' | 'prize' | 'claimed' | 'complete' | 'board' | 'booth' | 'claim' | 'mybooth' | 'swap' | 'contacts' | 'map' | 'photo' | 'menu' | 'rules' | 'tour';
@@ -65,7 +66,7 @@ export function toast(title: string, sub?: string, tone: Toast['tone'] = 'info',
   const last = waiting[waiting.length - 1]?.t ?? toasts.value[0];
   if (last && last.title === title && last.sub === sub) return; // the same thing twice says nothing new
   const item = { t: { id: ++toastId, title, sub, tone }, ms };
-  if (tone === 'warn') { waiting.unshift(item); clearTimeout(timer); next(); return; } // something went wrong: say it now
+  if (tone === 'warn') { sfx('warn'); waiting.unshift(item); clearTimeout(timer); next(); return; } // something went wrong: say it now
   waiting.push(item); if (waiting.length > 4) waiting.splice(0, waiting.length - 4);
   if (!timer) next();
 }
@@ -74,10 +75,13 @@ const ACTION_LABEL: Record<string, string> = {
   passport: 'Your card is ready', dock: 'Claimed at Booth 8H18B', stamp: 'Stamped', scan: 'Scanned at the real booth', verified_contact: 'Met in person',
   share_station: 'Card left', link: 'Cards swapped', station_claim: 'Your booth is online', daily_drop: 'Booth of the day',
 };
+const BIG = new Set(['passport', 'dock', 'station_claim', 'link']);
 /** One action can pay several ways at once (a scan that is also the booth of the day). It is still one moment: one toast, one total. */
 export function showEvents(events: XpEvent[] | undefined) {
   const list = events ?? []; if (!list.length) return;
   const total = list.reduce((n, e) => n + e.xp, 0), labels = [...new Set(list.map((e) => ACTION_LABEL[e.action] ?? e.action))], target = list.find((e) => e.target)?.target, note = list.find((e) => e.note)?.note;
+  // heard and felt as well as read: a chime for points, a longer one for the moments the mission turns on
+  if (list.some((e) => BIG.has(e.action))) { sfx('big'); buzz([18, 50, 18]); } else if (total > 0) { sfx('stamp'); buzz(14); }
   if (total > 0) toast(`+${total} points`, [...labels, target, note].filter(Boolean).join(' · '), 'xp', note ? 5200 : 3400);
   else toast(labels[0]!, target);
 }
