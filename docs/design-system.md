@@ -31,6 +31,11 @@ every visual of the switched-off systems (storm floor, sector tint, Ground Contr
 
 Booth names appear as **crisp labels for the few booths around you** instead of tiny roof textures nobody could read.
 
+**Places** (cafés, lounges, stages, kitchens, press rooms, the photo booth) are furnished from four neutral tones —
+white, warm grey, grey, ink — on a sage floor patch. All furniture in the building is two instanced meshes; the seated
+crowd is three. The crowd is **grey**: blue and green are reserved for real people. The photo walls and the floor mark
+in front of them follow the same rule: the wall is white with ink lettering, the mark is blue because you can use it.
+
 ## Why it is sharp on phones now
 
 - Antialiasing is always on, and the canvas renders at the phone's real pixel density (up to 2×). Before, phones got
@@ -48,8 +53,9 @@ Booth names appear as **crisp labels for the few booths around you** instead of 
 - **Thumb zone.** Bottom-centre: the one thing you can do right here (stamp, get card, lift). Bottom-right: the three
   things you can always do (find, swap cards, menu). The lower-left is left free for the joystick.
 - **Sheets** rise from the bottom on a phone and are centred dialogs on a desk. One primary (blue) button per sheet.
-- **Feedback for every input:** tap the floor → a blue ring where you are going; stamp → the roof turns gold and a
-  toast drops from the top; buttons press in.
+- **Feedback for every input:** tap the floor → a blue ring where you are going; stamp → the gold roof drops in with a
+  small overshoot and a toast comes down from the top; buttons press in; starts and stops have a little weight.
+- **The dock is three buttons**: map (with search and places), express (wave · cheer · dance · jump · photo), menu.
 - Targets ≥ 44 px. Type: Urbanist, 800 for titles, 700 for controls, 500 for text; eyebrows 11 px caps in grey.
   Radii 10 / 14 / 22. One shadow. Motion 120–240 ms, off with "reduce motion".
 - The brand wordmark appears on the first screen and the big screen — not over the game.

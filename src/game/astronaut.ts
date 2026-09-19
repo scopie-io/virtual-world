@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CATALOG, type AvatarSpec, type CarryKind, type SmileKind, type TopOption } from '../../shared/avatar';
+import type { Pose } from '../../shared/rules';
 
 // The brand mascot from primitives: helmet, black visor, LED smile, ear ring — dressed from an AvatarSpec.
 // In the game everyone wears the same suit; the jacket colour says who they are (blue visitor, green exhibitor).
@@ -100,6 +101,9 @@ export class Astronaut {
   private phase = Math.random() * 10;
   private ghost = false;
   private jacket: number | undefined;
+  private pose: Pose = '';
+  private seatZ = 0.46;
+  private poseT = 0;
 
   constructor({ spec, jacket, marker }: AstronautOpts) {
     this.jacket = jacket;
@@ -110,6 +114,8 @@ export class Astronaut {
   }
 
   setJacket(color: number | undefined) { this.jacket = color; }
+  /** What the astronaut is doing besides walking. seatZ: how high the seat is, for 'sit'. */
+  setPose(pose: Pose, seatZ = 0.46) { if (pose !== this.pose) this.poseT = 0; this.pose = pose; this.seatZ = seatZ; }
 
   /** Rebuild the look in place. Cheap: shared geometry, cached materials. */
   dress(spec: AvatarSpec) {
@@ -143,11 +149,23 @@ export class Astronaut {
 
   /** speed01: 0 idle … 1 full run. */
   animate(dt: number, speed01: number) {
-    this.phase += dt * (2 + speed01 * 9);
+    this.phase += dt * (2 + speed01 * 9); this.poseT += dt;
+    const [l, r] = this.arms as [THREE.Mesh, THREE.Mesh], legs = this.legs, rig = this.rig, t = this.poseT;
+    // arms pivot at their middle, so a raised arm is moved up as well as turned
+    const arm = (a: THREE.Mesh, s: number, up: number, wobble = 0) => { a.position.set(s * (0.47 + up * 0.13), 0.98 + up * 0.34, 0); a.rotation.set(0, 0, s * (0.25 + up * 2.3) + wobble); };
+    arm(l, -1, 0); arm(r, 1, 0); rig.rotation.set(0, 0, 0);
+    const pose = speed01 > 0.15 && this.pose !== 'jump' ? '' : this.pose; // walking wins over waving
+    if (pose === 'sit') {
+      legs[0]!.rotation.x = legs[1]!.rotation.x = -1.45; rig.position.y = this.seatZ - 0.52 + Math.sin(this.phase * 0.5) * 0.01; return;
+    }
     const swing = Math.sin(this.phase) * 0.75 * speed01;
-    this.legs[0]!.rotation.x = swing; this.legs[1]!.rotation.x = -swing;
-    this.arms[0]!.rotation.x = -swing * 0.8; this.arms[1]!.rotation.x = swing * 0.35; // the right arm is usually carrying something
-    this.rig.position.y = speed01 > 0.05 ? Math.abs(Math.sin(this.phase)) * 0.12 : Math.sin(this.phase * 0.5) * 0.03 + 0.03;
+    legs[0]!.rotation.x = swing; legs[1]!.rotation.x = -swing;
+    l.rotation.x = -swing * 0.8; r.rotation.x = swing * 0.8;
+    rig.position.y = speed01 > 0.05 ? Math.abs(Math.sin(this.phase)) * 0.12 : Math.sin(this.phase * 0.5) * 0.03 + 0.03;
+    if (pose === 'wave') arm(r, 1, 1, Math.sin(t * 11) * 0.35);
+    else if (pose === 'cheer') { arm(l, -1, 1, Math.sin(t * 9) * 0.12); arm(r, 1, 1, -Math.sin(t * 9) * 0.12); rig.position.y = Math.abs(Math.sin(t * 7)) * 0.22; }
+    else if (pose === 'dance') { const k = Math.sin(t * 6); arm(l, -1, 0.5 + k * 0.5); arm(r, 1, 0.5 - k * 0.5); rig.rotation.z = k * 0.16; rig.rotation.y = Math.sin(t * 3) * 0.5; rig.position.y = Math.abs(Math.sin(t * 6)) * 0.14; legs[0]!.rotation.x = k * 0.35; legs[1]!.rotation.x = -k * 0.35; }
+    else if (pose === 'jump') { arm(l, -1, 0.6); arm(r, 1, 0.6); legs[0]!.rotation.x = 0.4; legs[1]!.rotation.x = -0.25; }
   }
 
   dispose() { this.group.removeFromParent(); }

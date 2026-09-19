@@ -271,27 +271,6 @@ export function ContactsSheet() {
   );
 }
 
-/* ------------------------------------------------------------------ find */
-
-export function FindSheet() {
-  const [q, setQ] = useState(''), lv = level.value, sm = stationMap.value;
-  const hits = useMemo(() => {
-    const t = q.trim().toLowerCase(); if (!lv || t.length < 2) return [] as Booth[];
-    return lv.booths.filter((b) => b.id.toLowerCase().includes(t) || b.name.toLowerCase().includes(t) || (sm.get(b.id)?.company.toLowerCase().includes(t) ?? false)).slice(0, 30);
-  }, [q, lv, sm]);
-  const name = (b: Booth) => sm.get(b.id)?.company || b.name || `Booth ${b.id}`;
-  return (
-    <Sheet k="Find" title="Where to?">
-      <label>Booth number or exhibitor<input autofocus value={q} placeholder="e.g. 7C17, Mamee, UOB" onInput={(e) => setQ((e.target as HTMLInputElement).value)} /></label>
-      <div class="results">
-        <button class="result hero" onClick={() => { const h = lv!.hero; guideTarget.value = { x: h.dock.x, y: h.dock.y, label: 'The X · Booth 8H18B' }; guideOn.value = true; modal.value = null; }}><strong>The X — Lean X Digital · nexova</strong><small>Booth 8H18B · Hall 8 · Level 2</small></button>
-        {hits.map((b) => <button key={b.id} class="result" onClick={() => guideTo(b, name(b))}><strong>{name(b)}</strong><small>Booth {b.id} · Hall {b.hall} · Level {b.deck}{b.sector ? ` · ${b.sector}` : ''}{sm.has(b.id) ? ' · online' : ''}{stampedSet.value.has(b.id) ? ' · stamped' : ''}</small></button>)}
-        {q.trim().length >= 2 && hits.length === 0 && <p class="fine">No booth or exhibitor matches on any of the three levels.</p>}
-      </div>
-    </Sheet>
-  );
-}
-
 /* ------------------------------------------------------------------ the board + menu */
 
 export function BoardSheet() {
@@ -319,7 +298,9 @@ export function MenuSheet() {
         {m.passport && <a href={m.passport.url} target="_blank" rel="noopener"><strong>My card</strong><small>Your digital business card · link and QR</small></a>}
         {m.passport && !m.docked && <button onClick={go('prize')}><strong>My prize code</strong><small>Show it at the real Booth 8H18B</small></button>}
         {(m.cls === 'exhibitor' || m.hosting.length > 0) && <button onClick={go(m.passport ? 'mybooth' : 'card')}><strong>My booth</strong><small>{m.hosting.length ? m.hosting.join(', ') + ' · QR and leads' : 'Bring it online'}</small></button>}
+        <button onClick={go('swap')}><strong>Swap cards</strong><small>Met someone? Exchange cards · +{POINTS.swap} each</small></button>
         <button onClick={go('contacts')}><strong>My contacts</strong><small>{m.links} people · {m.shared.length} booths</small></button>
+        <button onClick={go('map')}><strong>Map</strong><small>All three levels · search · places to go</small></button>
         <button onClick={go('board')}><strong>Leaderboard</strong><small>Top players · most visited booths</small></button>
         <button onClick={go('rules')}><strong>How to play</strong><small>The mission and the points, on one page</small></button>
         <button onClick={switchRole}><strong>{m.cls === 'exhibitor' ? 'Play as a visitor' : 'I am exhibiting'}</strong><small>{m.cls === 'exhibitor' ? 'Do the five-chapter mission' : 'Put your booth in the game'}</small></button>

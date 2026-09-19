@@ -12,7 +12,7 @@
     "build": "tsc --noEmit && vite build",
     "start": "tsx server/node.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test server/game.test.ts server/m2.test.ts server/m3.test.ts server/m4.test.ts src/game/pdr.test.ts src/demo/sim.test.ts",
+    "test": "tsx --test server/game.test.ts server/m2.test.ts server/m3.test.ts server/m4.test.ts src/game/pdr.test.ts src/demo/sim.test.ts src/game/places.test.ts",
     "demo": "npm run build && node tools/serve-dist.mjs"
   },
   "dependencies": {

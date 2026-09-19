@@ -4,7 +4,7 @@ import { shortCode } from './crypto.js';
 import type { Presence } from './presence.js';
 import type { CrewTicketView, Hologram, LevelData, Me, PassportInput, PresencePing, StampRequest, XpEvent } from '../shared/types.js';
 import {
-  DEFAULT_SHARE, EXPLORE_XP, FEATURES, HOST_GRACE_WINDOWS, HOST_WINDOW_MS, INFLUENCE, INFLUENCE_PRESENCE, NAME_ON_BOARD, POINTS, PRIZE_CODE_TTL_MS, REMOTE_SHARE, ROLES, ROLE_INFO,
+  DEFAULT_SHARE, EXPLORE_XP, FEATURES, POSES, HOST_GRACE_WINDOWS, HOST_WINDOW_MS, INFLUENCE, INFLUENCE_PRESENCE, NAME_ON_BOARD, POINTS, PRIZE_CODE_TTL_MS, REMOTE_SHARE, ROLES, ROLE_INFO,
   SHARE_FIELDS, STAMP_MIN_INTERVAL_MS, STAMP_RADIUS_M, stampPoints, type Features, type Presence as Presence2, type Role, type ShareField,
 } from '../shared/rules.js';
 import { decodeAvatar, defaultAvatar, encodeAvatar, validateAvatar, type AvatarSpec } from '../shared/avatar.js';
@@ -191,7 +191,7 @@ export class Game {
   }
 
   /** What other players are told about this one. */
-  async hologramOf(id: string, at: { x: number; y: number; h: number; deck: boolean; sigma: number }): Promise<Hologram> {
+  async hologramOf(id: string, at: { x: number; y: number; h: number; deck: boolean; sigma: number; pose?: Hologram['pose'] }): Promise<Hologram> {
     const p = await this.player(id);
     let av = this.avatarCode.get(id);
     if (!av || this.now() - av.at > 30_000) { av = { code: encodeAvatar(await this.avatarOf(id, p.cls)), at: this.now() }; this.avatarCode.set(id, av); }
@@ -205,7 +205,8 @@ export class Game {
     const t = this.now();
     const deck = pos.deck === true && ((await this.hooks.isOnsite?.(id, t)) ?? false);
     const sigma = deck && Number.isFinite(pos.sigma) ? Math.min(50, Math.max(1, pos.sigma!)) : 0;
-    const moved = await this.presence.update(await this.hologramOf(id, { x: pos.x, y: pos.y, h: pos.h, deck, sigma }), t, isSpawn);
+    const pose = (POSES as readonly string[]).includes(pos.pose ?? '') ? pos.pose : '';
+    const moved = await this.presence.update(await this.hologramOf(id, { x: pos.x, y: pos.y, h: pos.h, deck, sigma, pose }), t, isSpawn);
     const events: XpEvent[] = [];
     if (moved != null) {
       events.push(...(await this.discover(id, pos.x, pos.y, t, deck ? 'onsite' : 'remote')));

@@ -51,6 +51,27 @@ QR at the real booth that day pays a bonus they choose.
 
 There is one board with two tabs: **players by points**, **booths by visits**.
 
+## The world: places to go, things to do — none of it scores
+
+The rules above are the whole game. Everything below is play: it costs nothing, earns nothing, and needs no explaining.
+
+- **Places.** The 20 named areas of the real floor plan, on all three levels, are furnished places you can walk into:
+  cafés, lounges, stages with rows of seats, kitchens with stools, the press rooms, the photo booth, the merchandise
+  stand. Their layout is generated from the rectangles the organiser drew (`src/game/places.ts`).
+- **One thing to do in each**, on the same big button as "Stamp": sit down · sit and watch · take a photo.
+  While you sit, one true sentence about the show at a time (`src/game/facts.ts` — counted from the floor plan and the
+  official exhibitor list, never written by hand).
+- **Photo.** Your astronaut, waving, with the place behind them and a caption band. Made on the device; share or save.
+- **Expression.** Wave, cheer, dance, jump. Other players see it (it travels with your position; nothing else does).
+- **The map.** All three levels of MITEC: stamped booths in gold, online booths in green, lifts, the X, you. Tap
+  anywhere to be guided there. Search and the list of places live in the same sheet.
+- **Arriving.** Walking into a hall or a place for the first time says what it is: "Hall 3 · Level 1 — 232 booths ·
+  mostly Food & Beverages". The map keeps count of what you have seen (on this device; it is a memory, not a score).
+- **Lifts** are a ride: the camera rises, crosses to the other level and comes down.
+- **A quiet crowd** sits in the places — grey, unnamed, never blue or green, which are real people.
+
+Keyboard: WASD / arrows · space jump · E the big button · 1 2 3 wave, cheer, dance · M map.
+
 ## The exhibitor's three steps
 
 1. **Light up** — find your booth number, add your name, one line and a colour. It glows for every player at once.

@@ -1,4 +1,5 @@
 import type { LevelData, Rect } from '../../shared/types';
+import { buildPlaces } from './places';
 
 export interface P2 { x: number; y: number }
 
@@ -24,7 +25,7 @@ export class NavGrid {
     for (const r of level.walkable) this.fill(r, 1, -radius);
     const bw = level.booth.w / 2, depth = new Map(level.decks.map((d) => [d.level, d.boothD / 2]));
     for (const b of level.booths) { const bd = depth.get(b.deck) ?? level.booth.d / 2; this.fill({ x0: b.x - bw, y0: b.y - bd, x1: b.x + bw, y1: b.y + bd }, 0, radius); }
-    for (const a of level.areas) if (a.kind === 'pad') this.fill(a, 0, radius);
+    for (const p of buildPlaces(level)) for (const r of p.blocked) this.fill(r, 0, radius * 0.6); // places are walked into; only their furniture is in the way
     for (const wl of level.walls) this.fill(wl, 0, radius);
   }
 

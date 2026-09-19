@@ -70,7 +70,7 @@ export function createApp({ game, stations, social, crews, venue, director, gc, 
   player.post('/presence', async (c) => {
     if (!pingLimit(pid(c))) throw new GameError('rate', 'Too many updates', 429);
     const b = await body(c);
-    const r = await game.ping(pid(c), { x: Number(b.x), y: Number(b.y), h: Number(b.h), deck: b.deck === true, sigma: Number(b.sigma), steps: Number(b.steps) }, b.spawn === true);
+    const r = await game.ping(pid(c), { x: Number(b.x), y: Number(b.y), h: Number(b.h), pose: typeof b.pose === 'string' ? (b.pose as never) : undefined, deck: b.deck === true, sigma: Number(b.sigma), steps: Number(b.steps) }, b.spawn === true);
     return ok(c, { holograms: (await ops.flags()).holograms ? r.holograms : [], online: r.online, deck: r.deck }, r.events, r.events.length > 0);
   });
   player.post('/stamp', async (c) => ok(c, null, await game.stamp(pid(c), (await body(c)) as never)));

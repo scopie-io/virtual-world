@@ -273,7 +273,7 @@ CREATE INDEX IF NOT EXISTS team_members_owner ON team_members(owner_id);
 -- land on a different instance, so it lives here. Rows are overwritten every ping and go stale after 15 s.
 CREATE TABLE IF NOT EXISTS presence (
   player_id TEXT PRIMARY KEY REFERENCES players(id),
-  callsign TEXT NOT NULL, cls TEXT, rank TEXT NOT NULL, av TEXT NOT NULL,
+  callsign TEXT NOT NULL, cls TEXT, pose TEXT NOT NULL DEFAULT '', av TEXT NOT NULL,
   x REAL NOT NULL, y REAL NOT NULL, h REAL NOT NULL, deck INTEGER NOT NULL DEFAULT 0, sigma REAL NOT NULL DEFAULT 0,
   t INTEGER NOT NULL
 );

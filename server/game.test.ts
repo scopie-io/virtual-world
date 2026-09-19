@@ -182,6 +182,18 @@ test('the exhibitor journey: light up, get scanned, lead', async () => {
   assert.deepEqual([booths[0]!.title, booths[0]!.value, booths[0]!.unit], ['Kedai Kopi', 1, 'visits']);
 });
 
+test('expression: a pose is seen by players nearby; anything else is dropped', async () => {
+  const { call } = await rig(), a = new Map<string, string>(), b = new Map<string, string>(), s = level.spawns.short;
+  await call('POST', '/api/start', { role: 'visitor' }, a); await call('POST', '/api/start', { role: 'visitor' }, b);
+  await call('POST', '/api/presence', { x: s.x, y: s.y, h: 0, spawn: true, pose: 'wave' }, a);
+  let seen = (await call('POST', '/api/presence', { x: s.x + 1, y: s.y, h: 0, spawn: true }, b)).json.data.holograms;
+  assert.equal(seen[0].pose, 'wave');
+  await call('POST', '/api/presence', { x: s.x, y: s.y, h: 0, pose: '<script>' }, a);
+  seen = (await call('POST', '/api/presence', { x: s.x + 1, y: s.y, h: 0 }, b)).json.data.holograms;
+  assert.equal(seen[0].pose, undefined);
+  assert.equal(((await call('GET', '/api/me', undefined, a)).json.me as Me).xp, 0, 'expression earns nothing');
+});
+
 test('a tampered session cookie gets a fresh guest, never another account', async () => {
   const { call, jar } = await rig();
   const a = (await call('GET', '/api/me')).json.me as Me;

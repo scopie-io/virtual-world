@@ -7,7 +7,8 @@
 import type { Services } from '../../server/wire';
 import { dayStart } from '../../server/game';
 import type { Booth, Hologram, LevelData } from '../../shared/types';
-import { HOST_WINDOW_MS, VENUE_DEFAULT, type ShareField } from '../../shared/rules';
+import { HOST_WINDOW_MS, VENUE_DEFAULT, type Pose, type ShareField } from '../../shared/rules';
+import { buildPlaces, taken, type Seat } from '../game/places';
 import { NavGrid, type P2 } from '../game/nav';
 
 export const DEMO_CREW_PIN = '2026';
@@ -18,6 +19,8 @@ interface Bot extends RosterEntry {
   base: Omit<Hologram, 'x' | 'y' | 'h' | 'deck' | 'sigma'> | null; baseAt: number;
   /** a job that overrides wandering: visit the booth a real player brought online */
   job: { type: 'visit'; station: string } | null;
+  /** what they are seen doing: sitting in a café, waving at you */
+  pose: Pose; poseUntil: number; seat: Seat | null; wavedAt: number;
 }
 export interface DemoState { version: number; crewPin: string; pendingStation: string | null; hostedNear: { id: string; name: string }[]; drop: string | null; bots: number }
 
@@ -44,10 +47,13 @@ export class DemoSim {
   private every = { hosts: 0, players: 0, venue: 0 };
   private visits = new Map<string, { n: number; at: number }>();
   private byDeck = new Map<number, Booth[]>();
+  private seats = new Map<number, Seat[]>();
+  private people: { at: number; ids: string[] } = { at: 0, ids: [] };
 
   constructor(private s: Services, private level: LevelData, private version: number) {
     this.nav = new NavGrid(level);
     for (const b of level.booths) { if (b.id === level.hero.id) continue; const l = this.byDeck.get(b.deck) ?? []; l.push(b); this.byDeck.set(b.deck, l); }
+    for (const p of buildPlaces(level)) { const l = this.seats.get(p.deck) ?? []; l.push(...p.seats.filter((_, i) => !taken(p, i))); this.seats.set(p.deck, l); }
   }
 
   /* ------------------------------------------------------------------ seeding */
@@ -155,7 +161,7 @@ export class DemoSim {
     this.bots = roster.map((b) => {
       const home = b.station ? this.s.game.stations.get(b.station)! : this.pickBooth(b.deck, null);
       const pos = this.nav.nearestWalkable(home.x, home.y) ?? { x: home.x, y: home.y };
-      return { ...b, pos, h: this.rand() * 6.28, path: [], speed: b.kind === 'remote' || b.kind === 'suspect' ? 3.2 + this.rand() * 1.8 : 1.1 + this.rand() * 0.5, wait: this.rand() * 12, target: null, base: null, baseAt: 0, job: null };
+      return { ...b, pos, h: this.rand() * 6.28, path: [], speed: b.kind === 'remote' || b.kind === 'suspect' ? 3.2 + this.rand() * 1.8 : 1.1 + this.rand() * 0.5, wait: this.rand() * 12, target: null, base: null, baseAt: 0, job: null, pose: '', poseUntil: 0, seat: null, wavedAt: 0 };
     });
     this.lastTick = 0;
   }
@@ -176,6 +182,7 @@ export class DemoSim {
       if (t - this.every.venue > 15 * 60_000) { this.every.venue = t; for (const b of this.bots) if (this.onsite(b)) await this.s.venue.checkIn(b.id, MITEC); }
       if (t - this.every.hosts > 20_000) { this.every.hosts = t; for (const b of this.bots) if (b.kind === 'host' && b.hosting) await quiet(() => this.s.stations.hostCode(b.id, b.station!)); }
       if (t - this.every.players > 3000) { this.every.players = t; await this.sendVisitors(t); }
+      await this.greet(t);
       for (const b of this.bots) await this.step(b, t, dt);
     } catch (e) { console.warn('[demo] tick', e); } finally { this.busy = false; }
   }
@@ -183,7 +190,8 @@ export class DemoSim {
   private onsite(b: RosterEntry) { return b.kind === 'host' || b.kind === 'onsite'; }
 
   private async step(b: Bot, t: number, dt: number): Promise<void> {
-    if (b.kind !== 'host') {
+    if (b.pose && t > b.poseUntil) { b.pose = ''; b.seat = null; }
+    if (b.kind !== 'host' && b.pose !== 'sit') {
       if (b.wait > 0) b.wait -= dt;
       else if (!b.path.length) await this.arrive(b, t);
       else this.walk(b, dt);
@@ -191,7 +199,7 @@ export class DemoSim {
 
     if (!b.base || t - b.baseAt > 60_000) { const h = await this.s.game.hologramOf(b.id, { x: 0, y: 0, h: 0, deck: false, sigma: 0 }); b.base = { id: h.id, callsign: h.callsign, cls: h.cls, av: h.av }; b.baseAt = t; }
     const deck = this.onsite(b);
-    let moved = await this.s.game.presence.update({ ...b.base, x: +b.pos.x.toFixed(2), y: +b.pos.y.toFixed(2), h: +b.h.toFixed(2), deck, sigma: deck ? 2 : 0 }, t, false);
+    let moved = await this.s.game.presence.update({ ...b.base, x: +b.pos.x.toFixed(2), y: +b.pos.y.toFixed(2), h: +b.h.toFixed(2), pose: b.pose || undefined, deck, sigma: deck ? 2 : 0 }, t, false);
     if (moved == null) { // the server refused an implausible jump: exactly what a teleporting client looks like
       await this.s.ops.speedFlag(b.id, `to ${b.pos.x.toFixed(0)},${b.pos.y.toFixed(0)} (demo: jumped across the hall)`);
       moved = await this.s.game.presence.update({ ...b.base, x: b.pos.x, y: b.pos.y, h: b.h, deck, sigma: 0 }, t, true);
@@ -220,6 +228,10 @@ export class DemoSim {
   /** Reached the end of a path (or has none yet): do what the bot came for, then choose where to go next. */
   private async arrive(b: Bot, t: number): Promise<void> {
     const { game, stations } = this.s;
+    if (b.seat) { // walked to a chair: sit for a while, like anyone would
+      if (Math.hypot(b.seat.x - b.pos.x, b.seat.y - b.pos.y) < 2.5) { b.pos = { x: b.seat.x, y: b.seat.y }; b.h = b.seat.h; b.pose = 'sit'; b.poseUntil = t + 20_000 + this.rand() * 30_000; } else b.seat = null;
+      return;
+    }
     if (b.target && Math.hypot(b.target.x - b.pos.x, b.target.y - b.pos.y) < 5) {
       const booth = b.target, visit = b.job?.type === 'visit' && b.job.station === booth.id;
       const st = (await stations.list()).find((s) => s.id === booth.id);
@@ -234,9 +246,25 @@ export class DemoSim {
       return;
     }
     if (b.kind === 'suspect' && this.rand() < 0.25) { const far = this.pickBooth(b.deck, null); b.pos = this.nav.nearestWalkable(far.x, far.y) ?? b.pos; b.wait = 3; return; } // "teleports": refused by the server and flagged
+    if (!b.job && this.rand() < 0.22) { // a break: a café table, a row in front of the stage
+      const free = (this.seats.get(b.deck) ?? []).filter((s) => !this.bots.some((o) => o.seat === s)), s = free[Math.floor(this.rand() * free.length)];
+      if (s && this.route(b, s, false)) { b.seat = s; b.target = null; return; }
+    }
     const live = (await stations.list()).map((s) => s.id);
     b.target = b.job?.type === 'visit' ? game.stations.get(b.job.station)! : this.pickBooth(b.deck, this.rand() < 0.5 ? live : null);
     if (!this.route(b, b.target, b.job != null)) { if (!b.job) { b.target = null; b.wait = 2; } }
+  }
+
+  /** People wave when someone walks up: whoever in the cast is standing near a real player says hello, now and then. */
+  private async greet(t: number): Promise<void> {
+    if (t - this.people.at > 5000) this.people = { at: t, ids: await this.humans() };
+    for (const id of this.people.ids) {
+      const at = await this.s.game.presence.position(id, t); if (!at) continue;
+      for (const b of this.bots) {
+        if (b.pose || t - b.wavedAt < 45_000 || Math.hypot(b.pos.x - at.x, b.pos.y - at.y) > 7 || this.rand() > 0.5) continue;
+        b.wavedAt = t; b.pose = 'wave'; b.poseUntil = t + 2600; b.h = Math.atan2(at.x - b.pos.x, -(at.y - b.pos.y)); b.wait = Math.max(b.wait, 2.8);
+      }
+    }
   }
 
   /* ---- things a single visitor cannot do alone ---- */

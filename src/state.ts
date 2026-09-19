@@ -1,9 +1,10 @@
 import { signal, computed } from '@preact/signals';
 import type { Booth, DailyDrop, HostStation, LevelData, Lift, Me, StationView, XpEvent } from '../shared/types';
 import { boothSteps, chapters, type Chapter } from '../shared/rules';
+import type { Place } from './game/places';
 
 export type Phase = 'boot' | 'start' | 'play' | 'error';
-export type Modal = null | 'card' | 'prize' | 'claimed' | 'complete' | 'board' | 'booth' | 'claim' | 'mybooth' | 'swap' | 'contacts' | 'find' | 'menu' | 'rules' | 'tour';
+export type Modal = null | 'card' | 'prize' | 'claimed' | 'complete' | 'board' | 'booth' | 'claim' | 'mybooth' | 'swap' | 'contacts' | 'map' | 'photo' | 'menu' | 'rules' | 'tour';
 
 export const phase = signal<Phase>('boot');
 export const level = signal<LevelData | null>(null);
@@ -32,6 +33,21 @@ export const stations = signal<StationView[]>([]);
 export const drop = signal<DailyDrop | null>(null);
 /** The exhibitor's own booths, for their three steps. */
 export const myBooths = signal<HostStation[]>([]);
+/** The place the player is standing in (a café, a stage, the photo booth…), and whether they have sat down there. */
+export const herePlace = signal<Place | null>(null);
+export const seated = signal(false);
+/** The photo just taken, as a data URL. */
+export const photoShot = signal<string | null>(null);
+/** Halls and places this browser has walked into: "hall:7", "place:cafe". A memory, not a score. */
+const SEEN = 'mx_seen';
+export const seen = signal<Set<string>>(new Set((() => { try { return JSON.parse(localStorage.getItem(SEEN) ?? '[]') as string[]; } catch { return []; } })()));
+export function markSeen(key: string): boolean {
+  if (seen.value.has(key)) return false;
+  seen.value = new Set([...seen.value, key]);
+  try { localStorage.setItem(SEEN, JSON.stringify([...seen.value])); } catch { /* private mode */ }
+  return true;
+}
+
 /** A card-swap code that arrived in the URL (scanned with the phone's own camera). */
 export const pendingLink = signal<string | null>(null);
 

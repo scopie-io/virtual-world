@@ -3,6 +3,7 @@ import type { LevelData, StationView } from '../../shared/types';
 import { Astronaut } from './astronaut';
 import { defaultAvatar } from '../../shared/avatar';
 import { THEME, css } from '../theme';
+import { buildPlaces, taken, type Place, type Tone } from './places';
 
 // Floor-plan metres → world. +x east, +y north ⇒ world +x east, −z north.
 export const CX = 95, CY = 72;
@@ -11,6 +12,7 @@ export const toPlan = (v: THREE.Vector3) => ({ x: v.x + CX, y: CY - v.z });
 
 export type Quality = 'high' | 'low';
 export interface Label { text: string; pos: THREE.Vector3; kind: 'area' | 'gate' | 'hero' | 'lift' }
+const TONE: Record<Tone, number> = { white: 0xffffff, soft: 0xe9e6df, mid: THEME.inkSoft, ink: THEME.ink, area: THEME.area };
 
 /**
  * A daylight model of the expo. Everything is matte, flat-coloured and lit by one sun, so edges stay clean on a phone:
@@ -30,15 +32,19 @@ export class World {
   private boothH = 3;
   private hero = new THREE.Group();
   private heroBits!: { X: THREE.Group; ring: THREE.Mesh; crew: Astronaut[] };
+  readonly places: Place[];
+  private pop: { i: number; t: number } | null = null;
+  private stampedIds: string[] = [];
 
   constructor(private level: LevelData) {
     this.heroPos = toWorld(level.hero.x, level.hero.y);
+    this.places = buildPlaces(level);
     this.scene.background = new THREE.Color(THEME.paper);
     this.scene.fog = new THREE.Fog(THEME.paper, 220, 640); // the other levels fade into the paper instead of ending in an edge
     // Tuned so an upward face receives exactly 1.0: colours on the floor and on roofs come out as written in theme.ts.
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0xb4ae9f, 1.9));
     const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(-80, 140, 60); this.scene.add(sun);
-    this.levels(); this.areas(); this.gates(); this.lifts(); this.booths(); this.theX();
+    this.levels(); this.furnish(); this.gates(); this.lifts(); this.booths(); this.theX();
   }
 
   private flat(color: number) { return new THREE.MeshLambertMaterial({ color }); }
@@ -72,14 +78,52 @@ export class World {
     m.rotation.x = -Math.PI / 2; m.rotation.z = rot; toWorld(x, y, 0.03, m.position); m.renderOrder = 2; this.scene.add(m);
   }
 
-  /** Lounges, stages, kitchens: one quiet colour, low, so the booths stay the subject. */
-  private areas() {
-    const m = this.flat(THEME.area);
-    for (const a of this.level.areas) {
-      const h = Math.min(a.h, 1.6), box = new THREE.Mesh(new THREE.BoxGeometry(a.x1 - a.x0, h, a.y1 - a.y0), m);
-      toWorld((a.x0 + a.x1) / 2, (a.y0 + a.y1) / 2, h / 2, box.position); this.scene.add(box);
-      this.labels.push({ text: a.name, pos: toWorld((a.x0 + a.x1) / 2, (a.y0 + a.y1) / 2, h + 1.2), kind: 'area' });
+  /**
+   * Cafés, lounges, stages, kitchens, the photo booth, the press rooms: a floor of their own and furniture from places.ts.
+   * All of it is two instanced meshes (boxes, cylinders) — a few thousand pieces, two draw calls — plus a seated crowd in three.
+   */
+  private furnish() {
+    const floor = this.decal({ color: THEME.area }), all = this.places.flatMap((p) => p.solids);
+    const boxes = all.filter((s) => !s.round), rounds = all.filter((s) => s.round), M = new THREE.Matrix4(), C = new THREE.Color(), p = new THREE.Vector3();
+    const build = (list: typeof all, geo: THREE.BufferGeometry) => {
+      const m = new THREE.InstancedMesh(geo, this.flat(0xffffff), Math.max(1, list.length));
+      list.forEach((s, i) => { toWorld(s.x, s.y, s.z + s.h / 2, p); M.makeScale(s.w, s.h, s.d).setPosition(p); m.setMatrixAt(i, M); m.setColorAt(i, C.set(TONE[s.tone])); });
+      m.count = list.length; m.frustumCulled = false; this.scene.add(m);
+    };
+    build(boxes, new THREE.BoxGeometry(1, 1, 1)); build(rounds, new THREE.CylinderGeometry(0.5, 0.5, 1, 20));
+
+    for (const pl of this.places) {
+      const r = pl.rect, cx = (r.x0 + r.x1) / 2, cy = (r.y0 + r.y1) / 2;
+      if (pl.open) { const f = new THREE.Mesh(new THREE.PlaneGeometry(r.x1 - r.x0, r.y1 - r.y0).rotateX(-Math.PI / 2), floor); toWorld(cx, cy, 0.025, f.position); f.renderOrder = 2; this.scene.add(f); }
+      this.labels.push({ text: pl.name, pos: toWorld(cx, cy, pl.open ? 4.4 : 2.8), kind: 'area' });
+      if (pl.spot) this.backdrop(pl);
     }
+
+    // The seated crowd: scenery, in grey — never blue or green, which are real people.
+    const crowd = this.places.flatMap((pl) => [...pl.seats.filter((_, i) => taken(pl, i)).map((s) => ({ s, sit: true })), ...(pl.presenter ? [{ s: pl.presenter, sit: false }] : [])]);
+    const body = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.3, 0.5, 4, 10), this.flat(THEME.inkSoft), Math.max(1, crowd.length));
+    const head = new THREE.InstancedMesh(new THREE.SphereGeometry(0.46, 18, 14), this.flat(0xffffff), Math.max(1, crowd.length));
+    const visor = new THREE.InstancedMesh(new THREE.SphereGeometry(0.36, 16, 12), this.flat(THEME.ink), Math.max(1, crowd.length));
+    const R = new THREE.Matrix4(), off = new THREE.Vector3();
+    crowd.forEach(({ s, sit }, i) => {
+      const y = s.z + (sit ? 0.42 : 0.85); R.makeRotationY(s.h);
+      toWorld(s.x, s.y, y, p); body.setMatrixAt(i, M.copy(R).setPosition(p));
+      toWorld(s.x, s.y, y + 0.78, p); head.setMatrixAt(i, M.copy(R).setPosition(p));
+      off.set(0, 0, 0.17).applyMatrix4(R); visor.setMatrixAt(i, M.copy(R).setPosition(p.x + off.x, p.y - 0.02, p.z + off.z));
+    });
+    for (const m of [body, head, visor]) { m.count = crowd.length; m.frustumCulled = false; this.scene.add(m); }
+  }
+
+  /** The photo wall: big quiet lettering to stand in front of, and a blue mark on the floor — blue, because it is something you can do. */
+  private backdrop(pl: Place) {
+    const { wall, x, y } = pl.spot!, c = document.createElement('canvas'); c.width = 1024; c.height = 420;
+    const g = c.getContext('2d')!; g.fillStyle = '#fff'; g.fillRect(0, 0, 1024, 420); g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = css(THEME.ink); g.font = '800 150px Urbanist, Arial'; g.fillText(wall.text, 512, 190); g.fillStyle = css(THEME.inkSoft); g.font = '600 44px Urbanist, Arial'; g.fillText('MITEC · KUALA LUMPUR', 512, 320);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    const len = Math.max(wall.w, wall.d), art = new THREE.Mesh(new THREE.PlaneGeometry(len - 0.4, (len - 0.4) * 0.41), new THREE.MeshBasicMaterial({ map: t }));
+    const n = { N: [0, 1], S: [0, -1], E: [1, 0], W: [-1, 0] }[wall.face] as [number, number];
+    toWorld(wall.x + n[0] * 0.17, wall.y + n[1] * 0.17, 1.8, art.position); art.rotation.y = { N: Math.PI, S: 0, E: Math.PI / 2, W: -Math.PI / 2 }[wall.face]; this.scene.add(art);
+    const mark = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.7, 40).rotateX(-Math.PI / 2), this.decal({ color: THEME.blue })); toWorld(x, y, 0.035, mark.position); mark.renderOrder = 3; this.scene.add(mark);
   }
 
   private gates() {
@@ -137,12 +181,15 @@ export class World {
   }
 
   setStamped(ids: Iterable<string>) {
-    const M = new THREE.Matrix4(), p = new THREE.Vector3(); let n = 0;
-    for (const id of ids) {
-      const i = this.boothIndex.get(id); if (i == null) continue;
-      const b = this.level.booths[i]!; toWorld(b.x, b.y, this.boothH + 0.06, p); M.makeTranslation(p.x, p.y, p.z); this.roofs.setMatrixAt(n++, M);
-    }
-    this.roofs.count = n; this.roofs.instanceMatrix.needsUpdate = true;
+    const next = [...ids].filter((id) => this.boothIndex.has(id)), was = new Set(this.stampedIds), fresh = next.findIndex((id) => !was.has(id));
+    if (this.stampedIds.length && fresh >= 0 && next.length === this.stampedIds.length + 1) this.pop = { i: fresh, t: 0 }; // one new stamp: let it land
+    this.stampedIds = next; this.roofs.count = next.length;
+    next.forEach((_, n) => this.placeRoof(n, 1));
+    this.roofs.instanceMatrix.needsUpdate = true;
+  }
+  private placeRoof(n: number, s: number) {
+    const b = this.level.booths[this.boothIndex.get(this.stampedIds[n]!)!]!, p = toWorld(b.x, b.y, this.boothH + 0.06 + (1 - s) * 1.2);
+    this.roofs.setMatrixAt(n, new THREE.Matrix4().makeScale(s, 1, s).setPosition(p));
   }
 
   /** Booth 8H18B, built by hand: open to the west aisle, our crew inside, and the X turning above it. */
@@ -176,6 +223,11 @@ export class World {
     X.rotation.y = t * 0.6; X.position.y = 8.5 + Math.sin(t * 1.2) * 0.25;
     const k = (t * 0.35) % 1, s = 3 + k * 9; ring.scale.set(s, 1, s); (ring.material as THREE.MeshBasicMaterial).opacity = (1 - k) * 0.55;
     for (const c of crew) c.animate(dt, 0);
+    if (this.pop) { // ease-out-back: overshoots a little, settles
+      const k = Math.min(1, (this.pop.t += dt * 3.2)), e = 1 + 2.4 * Math.pow(k - 1, 3) + 1.4 * Math.pow(k - 1, 2);
+      if (this.pop.i < this.stampedIds.length) { this.placeRoof(this.pop.i, e); this.roofs.instanceMatrix.needsUpdate = true; }
+      if (k >= 1) this.pop = null;
+    }
     if (this.pinned.length) {
       const M = new THREE.Matrix4(), p = new THREE.Vector3(), y = this.boothH + 1.5 + Math.sin(t * 2) * 0.18;
       this.pinned.forEach((bi, n) => { const b = this.level.booths[bi]!; toWorld(b.x, b.y, y, p); M.makeRotationY(t * 0.9).setPosition(p); this.pins.setMatrixAt(n, M); });

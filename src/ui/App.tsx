@@ -3,10 +3,12 @@ import type { Engine } from '../game/engine';
 import { api, ApiError } from '../net/api';
 import { MISSION_STAMPS, POINTS, ROLE_INFO, chapters, type Role } from '../../shared/rules';
 import type { PassportInput } from '../../shared/types';
-import { atLaunchPad, bootError, bootNote, distToGoal, goalVia, guideOn, guideTarget, journey, level, me, modal, nearLift, nearStation, panelStation, phase, stampedSet, stationMap, toast, toasts } from '../state';
+import { atLaunchPad, bootError, bootNote, distToGoal, goalVia, guideOn, guideTarget, herePlace, journey, level, me, modal, nearLift, nearStation, panelStation, phase, seated, stampedSet, stationMap, toast, toasts } from '../state';
+import { facts } from '../game/facts';
+import { MapSheet, PhotoSheet } from './world-sheets';
 import { DemoChip, TicketDemoHint, TourSheet } from '../demo/Tour';
 import { Qr, Sheet, hex } from './common';
-import { BoardSheet, BoothSheet, ClaimSheet, ContactsSheet, FindSheet, MenuSheet, MyBoothSheet, SwapSheet } from './sheets';
+import { BoardSheet, BoothSheet, ClaimSheet, ContactsSheet, MenuSheet, MyBoothSheet, SwapSheet } from './sheets';
 
 type Eng = { engine: () => Engine | null };
 
@@ -28,7 +30,8 @@ export function App({ engine }: Eng) {
       {m === 'mybooth' && <MyBoothSheet />}
       {m === 'swap' && <SwapSheet />}
       {m === 'contacts' && <ContactsSheet />}
-      {m === 'find' && <FindSheet />}
+      {m === 'map' && <MapSheet engine={engine} />}
+      {m === 'photo' && <PhotoSheet />}
       {m === 'menu' && <MenuSheet />}
       {m === 'tour' && <TourSheet />}
       <Toasts />
@@ -80,11 +83,20 @@ function Start({ engine }: Eng) {
 /* ------------------------------------------------------------------ in play: one instruction at a time */
 
 const Icon = ({ d }: { d: string }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>;
-const ICONS = { find: 'M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zm5 12 4 4', swap: 'M7 7h11l-3-3M17 17H6l3 3', menu: 'M4 7h16M4 12h16M4 17h16' };
+const ICONS = { map: 'M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14', express: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8.5 14a4.5 4.5 0 0 0 7 0M9 9.5v.5M15 9.5v.5', menu: 'M4 7h16M4 12h16M4 17h16' };
+
+/** While you sit: one true thing about the show at a time, counted from the floor plan. */
+function SeatNote() {
+  const list = facts(level.value!), [i, setI] = useState(() => Math.floor(Math.random() * list.length));
+  useEffect(() => { const id = setInterval(() => setI((n) => (n + 1) % list.length), 9000); return () => clearInterval(id); }, []);
+  return <div class="note"><span class="k">While you sit</span><p>{list[i]}</p></div>;
+}
 
 function Hud({ engine }: Eng) {
   const m = me.value!, j = journey.value!, st = nearStation.value, has = st && stampedSet.value.has(st.id), view = st ? stationMap.value.get(st.id) : undefined;
-  const [stamping, setStamping] = useState(false), [open, setOpen] = useState(false);
+  const [stamping, setStamping] = useState(false), [open, setOpen] = useState(false), [tray, setTray] = useState(false);
+  const place = herePlace.value, sitting = seated.value, eng = engine();
+  const express = (f: () => void) => () => { f(); setTray(false); };
   const goal = guideTarget.value, stName = st ? view?.company || st.name || 'Booth ' + st.id : '', total = (level.value?.booths.length ?? 1) - 1;
   const trail = guideOn.value && distToGoal.value != null && (goal || (!m.passport && j.kind === 'visitor'));
   const word = j.kind === 'visitor' ? 'Chapter' : 'Step';
@@ -124,16 +136,29 @@ function Hud({ engine }: Eng) {
       {/* bottom-right, under the thumb: the three things you can always do */}
       <div class="dock">
         <DemoChip />
-        <button aria-label="Find a booth" title="Find" onClick={() => (modal.value = 'find')}><Icon d={ICONS.find} /></button>
-        <button aria-label="Swap cards" title="Swap cards" onClick={() => (modal.value = 'swap')}><Icon d={ICONS.swap} /></button>
+        <button aria-label="Map and search" title="Map" onClick={() => (modal.value = 'map')}><Icon d={ICONS.map} /></button>
+        <div class="express">
+          {tray && (
+            <div class="tray" role="menu">
+              <button role="menuitem" onClick={express(() => eng?.emote('wave'))}>Wave</button><button role="menuitem" onClick={express(() => eng?.emote('cheer'))}>Cheer</button>
+              <button role="menuitem" onClick={express(() => eng?.emote('dance'))}>Dance</button><button role="menuitem" onClick={express(() => eng?.jump())}>Jump</button>
+              <button role="menuitem" onClick={express(() => void eng?.photo())}>Photo</button>
+            </div>
+          )}
+          <button aria-label="Express yourself" aria-expanded={tray} title="Wave, cheer, dance, jump, photo" class={tray ? 'on' : ''} onClick={() => setTray(!tray)}><Icon d={ICONS.express} /></button>
+        </div>
         <button aria-label="Menu" title="Menu" onClick={() => (modal.value = 'menu')}><Icon d={ICONS.menu} /></button>
       </div>
 
       {/* bottom-centre: the one thing you can do right here */}
       <div class="action">
+        {sitting && <SeatNote />}
+        {sitting && <button class="btn big" onClick={() => eng?.stand()}>Stand up</button>}
         {nearLift.value && <div class="liftrow">{nearLift.value.others.map((l) => <button key={l.deck} class="btn lift" onClick={() => engine()?.useLift(l)}>Level {l.deck}<small>{level.value?.decks.find((d) => d.level === l.deck)?.label.split(' · ')[1]}</small></button>)}</div>}
         {atLaunchPad.value && !m.passport && <button class="btn primary big" onClick={() => (modal.value = 'card')}>Get my free card</button>}
         {atLaunchPad.value && m.passport && !m.docked && <button class="btn primary big" onClick={() => (modal.value = 'prize')}>Show my prize code</button>}
+        {!sitting && place?.verb === 'photo' && <button class="btn primary big" onClick={() => void eng?.photo()}>Take a photo</button>}
+        {!sitting && (place?.verb === 'sit' || place?.verb === 'watch') && !(st && !has) && <button class="btn primary big" onClick={() => eng?.sit()}>{place.verb === 'watch' ? 'Sit and watch' : 'Sit down'}</button>}
         {!atLaunchPad.value && st && !has && <button class="btn primary big" disabled={stamping} onClick={doStamp}>{stamping ? 'Stamping…' : `Stamp · +${POINTS.stamp}`}</button>}
         {!atLaunchPad.value && st && (
           <button class={'chip' + (has ? ' on' : '')} onClick={() => { panelStation.value = st; modal.value = 'booth'; }}>{stName}{view ? (view.hosted ? ' · at the counter now' : ' · online') : ''} ›</button>

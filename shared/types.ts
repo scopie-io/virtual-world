@@ -1,4 +1,4 @@
-import type { MissionTemplate, Role, ShareField, StampProof } from './rules.js';
+import type { MissionTemplate, Pose, Role, ShareField, StampProof } from './rules.js';
 import type { AvatarSpec } from './avatar.js';
 
 export interface Rect { x0: number; y0: number; x1: number; y1: number }
@@ -83,8 +83,8 @@ export interface ApiErr { ok: false; error: string; code: string }
 export type ApiResult<T> = ApiOk<T> | ApiErr;
 
 export interface StampRequest { stationId: string; proof: StampProof; beacon?: string; code?: string }
-export interface PresencePing { x: number; y: number; h: number; deck?: boolean; sigma?: number; /** steps counted since the last ping (deck mode) */ steps?: number }
-export interface Hologram { id: string; callsign: string; cls: Role | null; x: number; y: number; h: number; av: string; /** really there, following real steps */ deck: boolean; /** position uncertainty in metres */ sigma: number }
+export interface PresencePing { x: number; y: number; h: number; /** sitting, waving, … — shown to others, nothing more */ pose?: Pose; deck?: boolean; sigma?: number; /** steps counted since the last ping (deck mode) */ steps?: number }
+export interface Hologram { id: string; callsign: string; cls: Role | null; x: number; y: number; h: number; av: string; pose?: Pose; /** really there, following real steps */ deck: boolean; /** position uncertainty in metres */ sigma: number }
 
 export interface CrewTicketView { callsign: string; name: string; company: string; role: string; alreadyDocked: boolean }
 

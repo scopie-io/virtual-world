@@ -11,6 +11,10 @@ export const ROLE_INFO: Record<Role, { label: string; plural: string; color: num
   exhibitor: { label: 'Exhibitor', plural: 'Exhibitors', color: 0x1e9e6a },
 };
 
+/** What an astronaut can be seen doing. Pure expression: no pose earns or costs anything. */
+export const POSES = ['', 'sit', 'wave', 'cheer', 'dance', 'jump'] as const;
+export type Pose = (typeof POSES)[number];
+
 /* ---------------- points: fixed, and printed on the rules card ---------------- */
 
 export const POINTS = {
