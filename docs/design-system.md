@@ -57,6 +57,32 @@ green. The rules still count every cell as its own booth.
 - No additive glow, no transparency stacks, no `backdrop-filter` blur anywhere in the interface.
 - Labels are HTML, snapped to whole pixels, and a label never sits on top of another.
 
+## What a frame costs
+
+Measured on the demo world with 20 other players in view, same scene before and after the performance pass (19 Sep):
+
+| | before | after |
+| --- | --- | --- |
+| draw calls | 238 | 60 – 83 |
+| triangles | 203,000 | 72,000 – 86,000 |
+| our code per frame (desktop) | 1.7 ms | 1.1 – 1.5 ms |
+
+How:
+
+- **Everyone who is not you is drawn together** (`src/game/troupe.ts`). An astronaut is ~14 small meshes; 40 players was
+  500+ draw calls. Rigs are posed as before but hidden, and each kind of part is copied into one instanced mesh per
+  frame: about a dozen calls whether there are 4 players or 40. Players far outside the view are not posed at all.
+- **Other players and the booth crew use a lighter build** of the same shapes (`detail: 'lo'`); the player keeps the
+  full one — it is the one in the portrait photo.
+- **The grey crowd was over half of all triangles** for background scenery. Same proportions, a quarter of the triangles.
+- **Furniture and crowd are built per level**, each with its own bounds, so the two levels you are not on are skipped.
+- **Labels are written only when they change**, and ones out of range are skipped before any maths.
+- **Resolution steps down on evidence only**: measured from real frame times over 3 s, under 42 fps; a tab that was
+  away, or a browser holding the page to 30 Hz, is not a slow phone.
+
+`?perf` on the game URL shows frames per second, milliseconds of our code per frame (by part), draw calls, triangles and
+the pixel ratio in the corner. It is the tool for the real-phone pass.
+
 ## Interface rules
 
 - **One thing at a time.** Top-left: one card — chapter, title, progress, and the distance/"Take me there" row when a

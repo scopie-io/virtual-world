@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { LevelData, StationView, Booth } from '../../shared/types';
 import { Astronaut } from './astronaut';
+import { Troupe } from './troupe';
 import { defaultAvatar } from '../../shared/avatar';
 import { THEME, css } from '../theme';
 import { buildPlaces, taken, type Place, type Tone } from './places';
@@ -24,6 +25,8 @@ export class World {
   readonly scene = new THREE.Scene();
   readonly labels: Label[] = [];
   readonly heroPos: THREE.Vector3;
+  /** everyone but the player, drawn in a dozen calls (troupe.ts). world.update() opens the frame; the engine adds players and closes it. */
+  readonly troupe: Troupe;
   private boothIndex = new Map<string, number>();
   private body!: THREE.InstancedMesh;
   private roofs!: THREE.InstancedMesh;
@@ -40,6 +43,7 @@ export class World {
 
   constructor(private level: LevelData) {
     this.heroPos = toWorld(level.hero.x, level.hero.y);
+    this.troupe = new Troupe(this.scene);
     this.places = buildPlaces(level);
     this.scene.background = new THREE.Color(THEME.paper);
     this.scene.fog = new THREE.Fog(THEME.paper, 220, 640); // the other levels fade into the paper instead of ending in an edge
@@ -91,14 +95,20 @@ export class World {
    * All of it is two instanced meshes (boxes, cylinders) — a few thousand pieces, two draw calls — plus a seated crowd in three.
    */
   private furnish() {
-    const floor = this.decal({ color: THEME.area }), all = this.places.flatMap((p) => p.solids);
-    const boxes = all.filter((s) => !s.round), rounds = all.filter((s) => s.round), M = new THREE.Matrix4(), C = new THREE.Color(), p = new THREE.Vector3();
-    const build = (list: typeof all, geo: THREE.BufferGeometry) => {
-      const m = new THREE.InstancedMesh(geo, this.flat(0xffffff), Math.max(1, list.length));
+    const floor = this.decal({ color: THEME.area }), M = new THREE.Matrix4(), C = new THREE.Color(), p = new THREE.Vector3();
+    const white = this.flat(0xffffff), boxGeo = new THREE.BoxGeometry(1, 1, 1), roundGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 14);
+    // One set of meshes per level, each with its own bounds: the two levels you are not on are skipped by the renderer.
+    const decks = [...new Set(this.places.map((pl) => pl.deck))];
+    const build = (list: Place['solids'], geo: THREE.BufferGeometry) => {
+      if (!list.length) return;
+      const m = new THREE.InstancedMesh(geo, white, list.length);
       list.forEach((s, i) => { toWorld(s.x, s.y, s.z + s.h / 2, p); M.makeScale(s.w, s.h, s.d).setPosition(p); m.setMatrixAt(i, M); m.setColorAt(i, C.set(TONE[s.tone])); });
-      m.count = list.length; m.frustumCulled = false; this.scene.add(m);
+      m.computeBoundingSphere(); m.name = 'furniture'; this.scene.add(m);
     };
-    build(boxes, new THREE.BoxGeometry(1, 1, 1)); build(rounds, new THREE.CylinderGeometry(0.5, 0.5, 1, 20));
+    for (const deck of decks) {
+      const all = this.places.filter((pl) => pl.deck === deck).flatMap((pl) => pl.solids);
+      build(all.filter((s) => !s.round), boxGeo); build(all.filter((s) => s.round), roundGeo);
+    }
 
     for (const pl of this.places) {
       const r = pl.rect, cx = (r.x0 + r.x1) / 2, cy = (r.y0 + r.y1) / 2;
@@ -107,15 +117,15 @@ export class World {
       if (pl.spot) this.backdrop(pl);
     }
 
-    // The seated crowd: scenery, in grey — never blue or green, which are real people.
-    const crowd = this.places.flatMap((pl) => [...pl.seats.filter((_, i) => taken(pl, i)).map((s) => ({ s, sit: true })), ...(pl.presenter ? [{ s: pl.presenter, sit: false }] : [])]);
-    // Same proportions as the player's astronaut (astronaut.ts), in four instanced meshes instead of eighteen each.
-    const N = Math.max(1, crowd.length);
-    const body = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.36, 0.45, 4, 10), this.flat(THEME.inkSoft), N);
-    const head = new THREE.InstancedMesh(new THREE.SphereGeometry(0.56, 20, 14), this.flat(0xffffff), N);
-    const visor = new THREE.InstancedMesh(new THREE.SphereGeometry(0.47, 18, 12), this.flat(THEME.ink), N);
-    const legs = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.26, 1), this.flat(THEME.ink), N);
+    // The seated crowd: scenery, in grey — never blue or green, which are real people. Same proportions as the player's
+    // astronaut, but background figures: four instanced meshes per level, and a fraction of the player's triangles.
+    const crowdGeo = [new THREE.CapsuleGeometry(0.36, 0.45, 2, 8), new THREE.SphereGeometry(0.56, 12, 8), new THREE.SphereGeometry(0.47, 10, 7), new THREE.BoxGeometry(0.5, 0.26, 1)] as const;
+    const crowdMat = [this.flat(THEME.inkSoft), white, this.flat(THEME.ink), this.flat(THEME.ink)] as const;
     const R = new THREE.Matrix4(), S = new THREE.Matrix4(), off = new THREE.Vector3();
+    for (const deck of decks) {
+    const crowd = this.places.filter((pl) => pl.deck === deck).flatMap((pl) => [...pl.seats.filter((_, i) => taken(pl, i)).map((s) => ({ s, sit: true })), ...(pl.presenter ? [{ s: pl.presenter, sit: false }] : [])]);
+    if (!crowd.length) continue;
+    const mk = (k: number) => new THREE.InstancedMesh(crowdGeo[k]!, crowdMat[k]!, crowd.length), body = mk(0), head = mk(1), visor = mk(2), legs = mk(3);
     crowd.forEach(({ s, sit }, i) => {
       const lift = sit ? s.z - 0.52 : s.z; R.makeRotationY(s.h);
       toWorld(s.x, s.y, lift + 0.92, p); body.setMatrixAt(i, M.copy(R).setPosition(p));
@@ -125,7 +135,8 @@ export class World {
       if (sit) { off.set(0, 0, 0.3).applyMatrix4(R); toWorld(s.x, s.y, s.z + 0.1, p); legs.setMatrixAt(i, M.copy(R).multiply(S.makeScale(1, 1, 0.6)).setPosition(p.x + off.x, p.y, p.z + off.z)); }
       else { toWorld(s.x, s.y, s.z + 0.3, p); legs.setMatrixAt(i, M.copy(R).multiply(S.makeScale(0.9, 2.3, 0.3)).setPosition(p)); }
     });
-    for (const m of [body, head, visor, legs]) { m.count = crowd.length; m.frustumCulled = false; this.scene.add(m); }
+    for (const m of [body, head, visor, legs]) { m.computeBoundingSphere(); m.name = 'crowd'; this.scene.add(m); }
+    }
   }
 
   /** The photo wall: big quiet lettering to stand in front of, and a blue mark on the floor — blue, because it is something you can do. */
@@ -283,7 +294,7 @@ export class World {
     X.add(bar(THEME.xBlue, Math.PI / 5, 0.7), bar(THEME.xYellow, -Math.PI / 5, 0.56)); X.position.y = 8.5;
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.94, 1, 64).rotateX(-Math.PI / 2), this.decal({ color: THEME.gold, transparent: true })); ring.position.y = 0.04; ring.renderOrder = 3;
     const crew = [-0.85, 0.2, 0.95].map((z, i) => { // our booth crew
-      const a = new Astronaut({ spec: defaultAvatar(null), jacket: THEME.ink }); a.group.position.set([-0.2, 0.55, -0.4][i]!, 0.1, z); a.group.rotation.y = -Math.PI / 2 + (i - 1) * 0.35; a.group.scale.setScalar(0.82); return a;
+      const a = new Astronaut({ spec: defaultAvatar(null), jacket: THEME.ink, detail: 'lo' }); a.group.visible = false; /* posed here, drawn by the troupe */ a.group.position.set([-0.2, 0.55, -0.4][i]!, 0.1, z); a.group.rotation.y = -Math.PI / 2 + (i - 1) * 0.35; a.group.scale.setScalar(0.82); return a;
     });
     hero.add(X, ring, ...crew.map((c) => c.group));
     this.heroBits = { X, ring, crew };
@@ -294,7 +305,8 @@ export class World {
     const { X, ring, crew } = this.heroBits;
     X.rotation.y = t * 0.6; X.position.y = 8.5 + Math.sin(t * 1.2) * 0.25;
     const k = (t * 0.35) % 1, s = 3 + k * 9; ring.scale.set(s, 1, s); (ring.material as THREE.MeshBasicMaterial).opacity = (1 - k) * 0.55;
-    for (const c of crew) c.animate(dt, 0);
+    this.troupe.begin();
+    for (const c of crew) { c.animate(dt, 0); this.troupe.add(c.group); }
     if (this.pop) { // ease-out-back: overshoots a little, settles
       const k = Math.min(1, (this.pop.t += dt * 3.2)), e = 1 + 2.4 * Math.pow(k - 1, 3) + 1.4 * Math.pow(k - 1, 2);
       if (this.pop.i < this.stampedIds.length) { this.placeRoof(this.pop.i, e); this.roofs.instanceMatrix.needsUpdate = true; }

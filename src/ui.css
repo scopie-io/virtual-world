@@ -119,6 +119,7 @@ input::placeholder,textarea::placeholder{color:var(--ink-3)}textarea{font-size:1
 .lbl.booth.online::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px}
 .lbl.hero{font-size:calc(12px * var(--ui));letter-spacing:.02em;text-transform:none;font-weight:800;color:#fff;background:var(--ink);padding:6px 12px;border-radius:999px;text-shadow:none}
 
+.perf{position:absolute;right:8px;top:8px;z-index:9;font:600 11px/1.4 ui-monospace,Menlo,Consolas,monospace;white-space:pre;color:#fff;background:rgba(27,33,48,.82);padding:6px 8px;border-radius:6px;pointer-events:none;text-align:right}
 .stick{position:fixed;display:none;width:116px;height:116px;margin:-58px 0 0 -58px;border-radius:50%;background:rgba(27,33,48,.06);border:1.5px solid var(--line-2);z-index:4;pointer-events:none}
 .stick-knob{position:absolute;left:50%;top:50%;width:48px;height:48px;border-radius:50%;background:var(--blue);transform:translate(-50%,-50%)}
 

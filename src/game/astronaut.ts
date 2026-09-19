@@ -26,6 +26,9 @@ const geo = {
   cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, 12),
 };
 
+// Other players are seen from across an aisle, never in a portrait: the same shapes with a third of the triangles.
+const geoLo: typeof geo = { ...geo, helmet: new THREE.SphereGeometry(0.56, 16, 11), visor: new THREE.SphereGeometry(0.47, 14, 10), body: new THREE.CapsuleGeometry(0.36, 0.45, 3, 10), leg: new THREE.CapsuleGeometry(0.14, 0.34, 2, 6), arm: new THREE.CapsuleGeometry(0.11, 0.34, 2, 6), ear: new THREE.CylinderGeometry(0.16, 0.16, 0.1, 10), shadow: new THREE.CircleGeometry(0.62, 16) };
+
 const mats = new Map<string, THREE.Material>();
 function mat(color: number, ghost: boolean, o: { rough?: number; metal?: number; map?: THREE.Texture; side?: THREE.Side } = {}): THREE.Material {
   const key = `${color}|${ghost}|${o.rough ?? 0.8}|${o.metal ?? 0}|${o.map?.uuid ?? ''}|${o.side ?? 0}`;
@@ -91,7 +94,7 @@ function carryMesh(kind: CarryKind, ghost: boolean): THREE.Object3D | null {
   return grp;
 }
 
-export interface AstronautOpts { spec: AvatarSpec; /** overrides the top's colour: the role colour */ jacket?: number; /** a ring on the floor in this colour: "this one is you" */ marker?: number }
+export interface AstronautOpts { /** 'lo' for everyone but the player: fewer triangles, same silhouette */ detail?: 'hi' | 'lo'; spec: AvatarSpec; /** overrides the top's colour: the role colour */ jacket?: number; /** a ring on the floor in this colour: "this one is you" */ marker?: number }
 
 export class Astronaut {
   readonly group = new THREE.Group();
@@ -104,11 +107,12 @@ export class Astronaut {
   private pose: Pose = '';
   private seatZ = 0.46;
   private poseT = 0;
+  private geo: typeof geo;
 
-  constructor({ spec, jacket, marker }: AstronautOpts) {
-    this.jacket = jacket;
+  constructor({ spec, jacket, marker, detail }: AstronautOpts) {
+    this.jacket = jacket; this.geo = detail === 'lo' ? geoLo : geo;
     this.group.add(this.rig);
-    const s = new THREE.Mesh(geo.shadow, shadowMat); s.rotation.x = -Math.PI / 2; s.position.y = 0.02; s.renderOrder = 4; this.group.add(s);
+    const s = new THREE.Mesh(this.geo.shadow, shadowMat); s.rotation.x = -Math.PI / 2; s.position.y = 0.02; s.renderOrder = 4; this.group.add(s);
     if (marker != null) { const r = new THREE.Mesh(geo.marker, new THREE.MeshBasicMaterial({ color: marker, ...onFloor })); r.rotation.x = -Math.PI / 2; r.position.y = 0.03; r.renderOrder = 5; this.group.add(r); }
     this.dress(spec);
   }
@@ -120,7 +124,7 @@ export class Astronaut {
   /** Rebuild the look in place. Cheap: shared geometry, cached materials. */
   dress(spec: AvatarSpec) {
     this.rig.clear(); this.legs = []; this.arms = [];
-    const g = this.ghost, C = CATALOG;
+    const g = this.ghost, C = CATALOG, geo = this.geo;
     const top = (C.top[spec.top] ?? C.top[0]!) as TopOption, carry = C.carry[spec.carry]?.kind ?? 'none';
     const topColor = this.jacket ?? top.color;
     const topM = mat(topColor, g, this.jacket == null && top.pattern === 'batik' ? { map: batikTex(top.color, top.accent ?? 0xffffff) } : {}), sleeveM = mat(topColor, g);

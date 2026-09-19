@@ -51,10 +51,12 @@ export class Engine {
   private ping: { mesh: THREE.Mesh; t: number };
   private holos = new Map<string, Holo>();
   private labelEls: { el: HTMLDivElement; l: Label }[] = [];
+  private labelCache = new WeakMap<HTMLDivElement, { o: string; t: string }>();
   private boothEls: { el: HTMLDivElement; booth: Booth | null; pos: THREE.Vector3 }[] = [];
   private buckets = new Map<string, Booth[]>();
   private running = false; private last = 0; private pingAt = 0; private proxAt = 0; private firstPing = true; private arrivalSeen = 0;
-  private fps = { acc: 0, n: 0, dpr: 1 };
+  private fps = { acc: 0, n: 0, dpr: 1, at: 0 };
+  private perf: { el: HTMLDivElement; t0: number; frames: number; cpu: number; parts: Record<string, number> } | null = null;
   private ui = 1; // the interface scale from ui.css (--ui): label boxes grow with the type
   private vel = { x: 0, y: 0 };
   private pose: Pose = ''; private poseUntil = 0; private jumpT = 1; private seat: Seat | null = null; private wantBeforeSit = 30;
@@ -123,6 +125,11 @@ export class Engine {
     };
     window.addEventListener('keydown', key); this.stops.push(() => window.removeEventListener('keydown', key));
 
+    if (new URLSearchParams(location.search).has('perf')) {
+      this.perf = { el: Object.assign(document.createElement('div'), { className: 'perf' }), t0: performance.now(), frames: 0, cpu: 0, parts: {} }; host.appendChild(this.perf.el);
+      (window as unknown as { __mx?: unknown }).__mx = { scene: this.world.scene, info: () => ({ ...this.renderer.info.render, dpr: this.fps.dpr, holos: this.holos.size }) };
+    }
+
     // a slow turn around the X behind the first screen
     this.camTarget.copy(this.world.heroPos); this.cam.yaw = this.cam.goalYaw = 0.6; this.loop(true);
   }
@@ -167,13 +174,23 @@ export class Engine {
   }
 
   private tick(now: number, dt: number) {
-    const t = now / 1000;
+    const t = now / 1000, pf = this.perf, c0 = pf ? performance.now() : 0;
+    let mark = c0; const lap = (k: string) => { if (!pf) return; const n = performance.now(); pf.parts[k] = (pf.parts[k] ?? 0) + n - mark; mark = n; };
     this.world.update(t, dt);
-    if (this.player) { this.movePlayer(dt); this.proximity(now); this.updateTrail(now, t); this.sync(now); this.updateHolos(now, dt); }
+    if (this.player) { this.movePlayer(dt); this.proximity(now); lap('move'); this.updateTrail(now, t); lap('trail'); this.sync(now); this.updateHolos(now, dt); lap('people'); }
     else { this.cam.goalYaw += dt * 0.1; this.cam.dist += (64 - this.cam.dist) * Math.min(1, dt * 1.5); }
-    this.updatePing(dt); this.updateCamera(dt); this.pointAt(now); this.updateLabels();
-    this.renderer.render(this.world.scene, this.camera);
-    this.adaptQuality(dt);
+    this.updatePing(dt); this.updateCamera(dt); this.pointAt(now); lap('camera'); this.updateLabels(); lap('labels');
+    this.world.troupe.end();
+    this.renderer.render(this.world.scene, this.camera); lap('render');
+    this.adaptQuality(now);
+    if (pf) {
+      pf.frames++; pf.cpu += performance.now() - c0;
+      if (now - pf.t0 >= 1000) {
+        const i = this.renderer.info.render, n = pf.frames, parts = Object.entries(pf.parts).map(([k, v]) => `${k} ${(v / n).toFixed(1)}`).join(' · ');
+        pf.el.textContent = `${Math.round((n * 1000) / (now - pf.t0))} fps · ${(pf.cpu / n).toFixed(1)} ms · ${i.calls} calls · ${Math.round(i.triangles / 1000)}k tris · dpr ${this.fps.dpr}\n${parts}`;
+        pf.t0 = now; pf.frames = 0; pf.cpu = 0; pf.parts = {};
+      }
+    }
   }
 
   /* ---------------- movement ---------------- */
@@ -332,7 +349,7 @@ export class Engine {
     this.input.setCursor(b ? 'pointer' : 'grab');
     const hero = b?.id === this.level.hero.id; // the X has its own sign; the cursor is enough
     this.world.mark('hover', b && !hero ? b : null);
-    if (!b || hero) { this.hover = b ? { booth: b, el: this.hoverEl, pos: new THREE.Vector3() } : null; this.hoverEl.style.opacity = '0'; return; }
+    if (!b || hero) { this.hover = b ? { booth: b, el: this.hoverEl, pos: new THREE.Vector3() } : null; return; }
     const st = stationMap.value.get(b.id), name = st?.company || b.name;
     this.hoverEl.textContent = name ? `${b.id} · ${name}` : `Booth ${b.id}`; this.hoverEl.classList.toggle('online', !!st);
     this.hover = { booth: b, el: this.hoverEl, pos: toWorld(b.x, b.y, this.level.booth.h + (st ? 2.7 : 1.5)) };
@@ -461,7 +478,7 @@ export class Engine {
       let o = this.holos.get(h.id);
       if (o && o.cls !== h.cls) { o.a.dispose(); o.label.remove(); this.holos.delete(h.id); o = undefined; } // changed door: new jacket
       if (!o) {
-        const a = new Astronaut({ spec: defaultAvatar(h.cls), jacket: h.cls ? ROLE_INFO[h.cls].color : undefined }); this.world.scene.add(a.group);
+        const a = new Astronaut({ spec: defaultAvatar(h.cls), jacket: h.cls ? ROLE_INFO[h.cls].color : undefined, detail: 'lo' }); a.group.visible = false; this.world.scene.add(a.group); // posed here, drawn by the troupe
         const label = Object.assign(document.createElement('div'), { className: 'lbl person', textContent: h.callsign }); this.host.appendChild(label);
         o = { a, cls: h.cls, track: new RemoteTrack({ t: now, x: h.x, y: h.y, h: h.h }), tx: h.x, ty: h.y, label, seen: now, sitting: false }; this.holos.set(h.id, o);
       }
@@ -476,9 +493,12 @@ export class Engine {
 
   /** Other people glide at constant speed between the positions we hear about (remote.ts), and walk at the pace they move. */
   private updateHolos(now: number, dt: number) {
+    const far = this.cam.dist * 2.4 + 60, cx = this.camTarget.x + 95, cy = 72 - this.camTarget.z; // well beyond the edge of the screen: not posed, not drawn
     for (const o of this.holos.values()) {
       const r = o.track; r.step(now, dt);
+      if (Math.abs(r.x - cx) > far || Math.abs(r.y - cy) > far) continue;
       toWorld(r.x, r.y, 0, o.a.group.position); o.a.group.rotation.y = r.h; o.a.animate(dt, Math.min(1, r.speed / RUN_SPEED));
+      this.world.troupe.add(o.a.group);
     }
   }
 
@@ -487,20 +507,26 @@ export class Engine {
   private updateLabels() {
     const v = new THREE.Vector3(), w = this.host.clientWidth, h = this.host.clientHeight, taken: [number, number, number, number][] = [];
     // Placed in order of importance; a label that would sit on one already placed stays hidden this frame.
+    // A label's style is only touched when it changes: most of the ~60 labels are out of range on any frame, and the rest sit still when you do.
+    const write = (el: HTMLDivElement, opacity: string, transform?: string) => {
+      let c = this.labelCache.get(el); if (!c) this.labelCache.set(el, c = { o: '', t: '' });
+      if (c.o !== opacity) el.style.opacity = c.o = opacity;
+      if (transform && c.t !== transform) el.style.transform = c.t = transform;
+    };
     const place = (el: HTMLDivElement, pos: THREE.Vector3, maxD: number, always = false) => {
-      v.copy(pos).project(this.camera); const d = this.camera.position.distanceTo(pos);
-      let vis = v.z < 1 && Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.05 && (always || d < maxD);
+      const d = this.camera.position.distanceTo(pos); if (!always && d >= maxD) return write(el, '0');
+      v.copy(pos).project(this.camera);
+      let vis = v.z < 1 && Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.05;
       const x = Math.round((v.x * 0.5 + 0.5) * w), y = Math.round((-v.y * 0.5 + 0.5) * h);
       if (vis) {
         const hw = ((el.textContent?.length ?? 8) * 3.6 + 14) * this.ui, hh = 11 * this.ui, box: [number, number, number, number] = [x - hw, y - hh, x + hw, y + hh];
         if (taken.some((t) => box[0] < t[2] && box[2] > t[0] && box[1] < t[3] && box[3] > t[1])) vis = false; else taken.push(box);
       }
-      el.style.opacity = vis ? String(always ? 1 : THREE.MathUtils.clamp((maxD - d) / (maxD * 0.25), 0, 1)) : '0';
-      if (vis) el.style.transform = `translate(-50%,-50%) translate(${x}px,${y}px)`;
+      if (vis) write(el, always ? '1' : THREE.MathUtils.clamp((maxD - d) / (maxD * 0.25), 0, 1).toFixed(2), `translate(-50%,-50%) translate(${x}px,${y}px)`); else write(el, '0');
     };
     const hero = this.labelEls.find((x) => x.l.kind === 'hero'); if (hero) place(hero.el, hero.l.pos, 0, true);
-    if (this.hover && this.hover.booth.id !== this.level.hero.id) place(this.hover.el, this.hover.pos, 0, true);
-    for (const s of this.boothEls) { if (s.booth && s.booth !== this.hover?.booth) place(s.el, s.pos, 52); else s.el.style.opacity = '0'; }
+    if (this.hover && this.hover.booth.id !== this.level.hero.id) place(this.hover.el, this.hover.pos, 0, true); else write(this.hoverEl, '0');
+    for (const s of this.boothEls) { if (s.booth && s.booth !== this.hover?.booth) place(s.el, s.pos, 52); else write(s.el, '0'); }
     const p = new THREE.Vector3();
     for (const o of this.holos.values()) place(o.label, toWorld(o.track.x, o.track.y, 2.9, p), 40);
     for (const { el, l } of this.labelEls) if (l.kind !== 'hero') place(el, l.pos, l.kind === 'gate' ? 110 : 80);
@@ -508,11 +534,14 @@ export class Engine {
 
   /* ---------------- resolution: start sharp, give a little only if the phone cannot keep up ---------------- */
 
-  private adaptQuality(dt: number) {
-    const f = this.fps; f.acc += dt; f.n++;
-    if (f.acc < 4) return;
+  private adaptQuality(now: number) {
+    const f = this.fps, gap = now - (f.at || now); f.at = now;
+    if (gap > 250 || document.hidden) { f.acc = 0; f.n = 0; return; } // the tab was away, or something outside the game stalled: not evidence
+    f.acc += gap / 1000; f.n++;
+    if (f.acc < 3) return;
     const fps = f.n / f.acc; f.acc = 0; f.n = 0;
-    if (fps < 24 && f.dpr > 1.25) { f.dpr = Math.max(1.25, f.dpr - 0.25); this.renderer.setPixelRatio(f.dpr); }
+    const capped30 = fps > 27 && fps < 33; // battery saver and some in-app browsers hold the page to 30: fewer pixels would not change that
+    if (fps < 42 && !capped30 && f.dpr > 1.25) { f.dpr = Math.max(1.25, f.dpr - 0.25); this.renderer.setPixelRatio(f.dpr); }
   }
 
   dispose() { this.running = false; this.input.dispose(); this.stops.forEach((s) => s()); this.renderer.dispose(); this.renderer.domElement.remove(); }
