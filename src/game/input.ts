@@ -5,7 +5,7 @@
 // other — so "tap where you want to go" works on the whole screen, including under the thumb.
 
 export interface InputSink {
-  onTap(x: number, y: number): void; onOrbit(dYaw: number): void; onZoom(factor: number): void;
+  onTap(x: number, y: number): void; onOrbit(dYaw: number, dPitch: number): void; onZoom(factor: number): void;
   /** false while a sheet is open: the world does not listen to the keyboard then */
   enabled(): boolean;
 }
@@ -79,10 +79,10 @@ export class Input {
       return;
     }
     const d = this.drags.get(e.pointerId); if (!d) return;
-    const dx = e.clientX - d.x; d.x = e.clientX; d.y = e.clientY;
+    const dx = e.clientX - d.x, dy = e.clientY - d.y; d.x = e.clientX; d.y = e.clientY;
     if (Math.hypot(d.x - d.sx, d.y - d.sy) > TAP_SLOP) d.moved = true;
     if (this.drags.size === 2) { const p = this.pinchDist(); if (this.pinch && p) this.sink.onZoom(this.pinch / p); this.pinch = p; }
-    else if (d.moved) this.sink.onOrbit(-dx * 0.006);
+    else if (d.moved) this.sink.onOrbit(-dx * 0.006, dy * 0.004);
   }
 
   private up(e: PointerEvent, cancelled = false) {

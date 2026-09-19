@@ -36,6 +36,17 @@ white, warm grey, grey, ink — on a sage floor patch. All furniture in the buil
 crowd is three. The crowd is **grey**: blue and green are reserved for real people. The photo walls and the floor mark
 in front of them follow the same rule: the wall is white with ink lettering, the mark is blue because you can use it.
 
+## One scale
+
+Booths, halls, aisles and places are true to the floor plan (a booth is 2.82 × 3.06 × 2.6 m). The astronaut is a
+mascot, about 1.25× a person (2.3 m with the helmet) — so everything people *use* is 1.25× too (`K` in
+`src/game/places.ts`): chairs, tables, counters, stools, and the gaps between them. A seated astronaut fits the chair
+and sits level with the grey crowd, which is built to the same proportions. Nobody is taller than a booth.
+
+Stands of several booths (116 exhibitors, up to 26 cells) close up into one block and carry the exhibitor's name on
+the roof, once, along their longest run (`src/game/stands.ts`). When the exhibitor is online the whole stand turns
+green. The rules still count every cell as its own booth.
+
 ## Why it is sharp on phones now
 
 - Antialiasing is always on, and the canvas renders at the phone's real pixel density (up to 2×). Before, phones got

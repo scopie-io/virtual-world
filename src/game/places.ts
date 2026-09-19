@@ -68,77 +68,86 @@ function frame(r: Rect, back: Side) {
 
 const footprint = (s: Solid): Rect => ({ x0: s.x - s.w / 2, y0: s.y - s.d / 2, x1: s.x + s.w / 2, y1: s.y + s.d / 2 });
 
+/**
+ * One scale for everything people use. The astronaut is a mascot, about 1.25× a person (2.3 m with the helmet), so
+ * chairs, tables, counters and the gaps between them are 1.25× life size too: a seated astronaut fits their chair,
+ * and sits level with the quiet crowd next to them. Booths and halls stay true to the floor plan.
+ */
+export const K = 1.25;
+const SEAT_Z = 0.46 * K, CHAIR = 0.46 * K;
+
 /** A chair: seat and back. `facing` is where the sitter looks. */
 function chair(x: number, y: number, facing: Side, out: Place) {
-  const b = 0.24, dx = facing === 'E' ? -b : facing === 'W' ? b : 0, dy = facing === 'N' ? -b : facing === 'S' ? b : 0, ns = facing === 'N' || facing === 'S';
-  out.solids.push({ x, y, z: 0.4, w: 0.46, d: 0.46, h: 0.06, tone: 'mid' }, { x: x + dx, y: y + dy, z: 0.4, w: ns ? 0.46 : 0.06, d: ns ? 0.06 : 0.46, h: 0.5, tone: 'mid' });
-  out.seats.push({ x, y, z: 0.46, h: FACE[facing] });
+  const b = CHAIR / 2 + 0.02, dx = facing === 'E' ? -b : facing === 'W' ? b : 0, dy = facing === 'N' ? -b : facing === 'S' ? b : 0, ns = facing === 'N' || facing === 'S';
+  out.solids.push({ x, y, z: SEAT_Z - 0.07, w: CHAIR, d: CHAIR, h: 0.07, tone: 'mid' }, { x: x + dx, y: y + dy, z: SEAT_Z - 0.07, w: ns ? CHAIR : 0.07, d: ns ? 0.07 : CHAIR, h: 0.62, tone: 'mid' });
+  out.seats.push({ x, y, z: SEAT_Z, h: FACE[facing] });
 }
 
 function layout(p: Place, deck: Rect) {
   const r = p.rect, W = r.x1 - r.x0, D = r.y1 - r.y0, block = (s: Solid) => { p.solids.push(s); p.blocked.push(footprint(s)); };
 
   if (p.kind === 'cafe') { // round tables on a grid, four chairs each
-    const sx = 7, sy = 5.5, nx = Math.max(1, Math.floor((W - 5) / sx) + 1), ny = Math.max(1, Math.floor((D - 5) / sy) + 1), ox = r.x0 + (W - (nx - 1) * sx) / 2, oy = r.y0 + (D - (ny - 1) * sy) / 2;
+    const sx = 7.5, sy = 6, nx = Math.max(1, Math.floor((W - 6) / sx) + 1), ny = Math.max(1, Math.floor((D - 6) / sy) + 1), ox = r.x0 + (W - (nx - 1) * sx) / 2, oy = r.y0 + (D - (ny - 1) * sy) / 2, tr = 0.75, off = 1.32;
     for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) {
       const x = ox + i * sx, y = oy + j * sy;
-      block({ x, y, z: 0, w: 0.16, d: 0.16, h: 0.72, tone: 'mid', round: true }); p.solids.push({ x, y, z: 0.72, w: 1.2, d: 1.2, h: 0.06, tone: 'white', round: true });
-      p.blocked[p.blocked.length - 1] = { x0: x - 0.6, y0: y - 0.6, x1: x + 0.6, y1: y + 0.6 };
-      chair(x - 1.05, y, 'E', p); chair(x + 1.05, y, 'W', p); chair(x, y - 1.05, 'N', p); chair(x, y + 1.05, 'S', p);
+      p.solids.push({ x, y, z: 0, w: 0.2, d: 0.2, h: 0.9, tone: 'mid', round: true }, { x, y, z: 0.9, w: tr * 2, d: tr * 2, h: 0.07, tone: 'white', round: true });
+      p.blocked.push({ x0: x - tr, y0: y - tr, x1: x + tr, y1: y + tr });
+      chair(x - off, y, 'E', p); chair(x + off, y, 'W', p); chair(x, y - off, 'N', p); chair(x, y + off, 'S', p);
     }
   } else if (p.kind === 'lounge') { // pairs of sofas facing each other over a low table, along the long axis
-    const f = frame(r, W >= D ? 'N' : 'E'), n = Math.max(1, Math.floor((f.len - 3) / 7)), step = f.len / n, mid = f.depth / 2;
+    const f = frame(r, W >= D ? 'N' : 'E'), n = Math.max(1, Math.floor((f.len - 3) / 8)), step = f.len / n, mid = f.depth / 2, sl = Math.min(2.5, f.len - 1.2), gap = Math.min(1.85, f.depth / 2 - 0.85);
     for (let i = 0; i < n; i++) {
       const u = step * (i + 0.5);
       for (const s of [-1, 1]) {
-        const v = mid + s * 1.45, facing: Side = f.ns ? (s < 0 ? 'N' : 'S') : s < 0 ? 'E' : 'W';
-        block(f.box(u, v, 2, 0.85, 0, 0.42, 'area')); block(f.box(u, v + s * 0.5, 2, 0.2, 0.42, 0.45, 'area'));
-        for (const k of [-0.5, 0.5]) p.seats.push({ ...f.at(u + k, v - s * 0.08), z: 0.46, h: FACE[facing] });
+        const v = mid + s * gap, facing: Side = f.ns ? (s < 0 ? 'N' : 'S') : s < 0 ? 'E' : 'W';
+        block(f.box(u, v, sl, 1.0, 0, SEAT_Z, 'area')); block(f.box(u, v + s * 0.6, sl, 0.22, SEAT_Z, 0.55, 'area'));
+        for (const k of [-0.6, 0.6]) p.seats.push({ ...f.at(u + k * Math.min(1, sl / 2.5), v - s * 0.1), z: SEAT_Z, h: FACE[facing] });
       }
-      block(f.box(u, mid, 1, 0.6, 0, 0.36, 'white'));
+      if (gap > 1.3) block(f.box(u, mid, 1.2, 0.7, 0, 0.45, 'white'));
     }
   } else if (p.kind === 'stage') { // a platform against the back, a screen behind it, rows of chairs facing it
-    const back = backSide(r, deck), f = frame(r, back), pd = Math.min(8, Math.max(3, f.depth * 0.35)), v0 = f.depth - pd;
-    block(f.box(f.len / 2, v0 + pd / 2, f.len - 1, pd, 0, 0.7, 'white'));
-    p.solids.push(f.box(f.len / 2, f.depth - 0.25, f.len - 3, 0.3, 0.7, 3.6, 'soft'), f.box(f.len / 2, f.depth - 0.45, Math.min(f.len - 6, 9), 0.1, 1.5, 2.4, 'ink'));
-    p.presenter = { ...f.at(f.len / 2 + 2.2, v0 + pd / 2 - 0.4), z: 0.7, h: FACE[OPP[back]] };
-    const rows = Math.min(7, Math.floor((v0 - 2.6) / 1.3)), per = Math.min(16, Math.floor((f.len - 3.6) / 0.9));
+    const back = backSide(r, deck), f = frame(r, back), pd = Math.min(8, Math.max(3, f.depth * 0.35)), v0 = f.depth - pd, pitch = 1.15, row = 1.65;
+    block(f.box(f.len / 2, v0 + pd / 2, f.len - 1, pd, 0, 0.8, 'white'));
+    p.solids.push(f.box(f.len / 2, f.depth - 0.25, f.len - 3, 0.3, 0.8, 4.2, 'soft'), f.box(f.len / 2, f.depth - 0.45, Math.min(f.len - 6, 10), 0.1, 1.7, 2.8, 'ink'));
+    p.presenter = { ...f.at(f.len / 2 + 2.6, v0 + pd / 2 - 0.4), z: 0.8, h: FACE[OPP[back]] };
+    const rows = Math.min(6, Math.floor((v0 - 3) / row)), per = Math.min(14, Math.floor((f.len - 4) / pitch));
     for (let j = 0; j < rows; j++) for (let i = 0; i < per; i++) {
-      const u = f.len / 2 + (i - (per - 1) / 2) * 0.9; if (Math.abs(u - f.len / 2) < 0.8) continue; // centre aisle
-      const q = f.at(u, v0 - 1.8 - j * 1.3); chair(q.x, q.y, back, p);
+      const u = f.len / 2 + (i - (per - 1) / 2) * pitch; if (Math.abs(u - f.len / 2) < 1) continue; // centre aisle
+      const q = f.at(u, v0 - 2.2 - j * row); chair(q.x, q.y, back, p);
     }
   } else if (p.kind === 'kitchen') { // a back counter, an island, stools along the island's front
-    const back = backSide(r, deck), f = frame(r, back), il = Math.max(3, f.len * 0.55);
-    block(f.box(f.len / 2, f.depth - 0.9, f.len - 2, 0.9, 0, 0.95, 'white')); block(f.box(f.len / 2, f.depth - 0.9, f.len - 2.4, 0.5, 0.95, 0.5, 'soft'));
-    block(f.box(f.len / 2, f.depth / 2, il, 1.1, 0, 0.92, 'white')); p.solids.push(f.box(f.len / 2, f.depth / 2, il + 0.2, 1.3, 0.92, 0.06, 'mid'));
-    for (let i = 0, n = Math.floor(il / 0.95); i < n; i++) {
-      const q = f.at(f.len / 2 + (i - (n - 1) / 2) * 0.95, f.depth / 2 - 1.05);
-      p.solids.push({ ...q, z: 0, w: 0.1, d: 0.1, h: 0.66, tone: 'mid', round: true }, { ...q, z: 0.66, w: 0.4, d: 0.4, h: 0.06, tone: 'mid', round: true });
-      p.seats.push({ ...q, z: 0.72, h: FACE[back] });
+    const back = backSide(r, deck), f = frame(r, back), il = Math.max(3, f.len * 0.55), top = 1.15, stool = 0.9;
+    block(f.box(f.len / 2, f.depth - 1, f.len - 2, 1.1, 0, top, 'white')); block(f.box(f.len / 2, f.depth - 0.75, f.len - 2.4, 0.5, top, 0.6, 'soft'));
+    block(f.box(f.len / 2, f.depth / 2, il, 1.3, 0, top, 'white')); p.solids.push(f.box(f.len / 2, f.depth / 2, il + 0.2, 1.5, top, 0.07, 'mid'));
+    for (let i = 0, n = Math.floor(il / 1.2); i < n; i++) {
+      const q = f.at(f.len / 2 + (i - (n - 1) / 2) * 1.2, f.depth / 2 - 1.3);
+      p.solids.push({ ...q, z: 0, w: 0.12, d: 0.12, h: stool - 0.07, tone: 'mid', round: true }, { ...q, z: stool - 0.07, w: 0.52, d: 0.52, h: 0.07, tone: 'mid', round: true });
+      p.seats.push({ ...q, z: stool, h: FACE[back] });
     }
   } else if (p.kind === 'press') {
     const back = backSide(r, deck), f = frame(r, back);
     if (W * D > 120) { // a press room: rows of work desks, a chair on each side
-      const cols = Math.max(1, Math.floor((f.depth - 2) / 4)), n = Math.max(1, Math.floor((f.len - 3) / 3.6));
+      const cols = Math.max(1, Math.floor((f.depth - 2) / 4.6)), n = Math.max(1, Math.floor((f.len - 3) / 4.4));
       for (let c = 0; c < cols; c++) for (let i = 0; i < n; i++) {
-        const u = f.len / 2 + (i - (n - 1) / 2) * 3.6, v = f.depth / 2 + (c - (cols - 1) / 2) * 4;
-        block(f.box(u, v, 2.4, 0.8, 0, 0.74, 'white'));
-        for (const s of [-1, 1]) { const q = f.at(u, v + s * 0.85); chair(q.x, q.y, (f.ns ? (s < 0 ? back : OPP[back]) : s < 0 ? back : OPP[back]), p); }
+        const u = f.len / 2 + (i - (n - 1) / 2) * 4.4, v = f.depth / 2 + (c - (cols - 1) / 2) * 4.6;
+        block(f.box(u, v, 3, 1, 0, 0.92, 'white'));
+        for (const s of [-1, 1]) { const q = f.at(u, v + s * 1.1); chair(q.x, q.y, s < 0 ? back : OPP[back], p); }
       }
-    } else { // a small studio: a screen wall, a desk, two chairs behind it facing out
-      p.solids.push(f.box(f.len / 2, f.depth - 0.2, f.len - 0.6, 0.25, 0, 3, 'soft'), f.box(f.len / 2, f.depth - 0.4, Math.max(1.2, f.len - 1.8), 0.08, 1.1, 1.5, 'ink'));
+    } else { // a small studio: a screen wall, a desk, chairs behind it facing out
+      p.solids.push(f.box(f.len / 2, f.depth - 0.2, f.len - 0.6, 0.25, 0, 3.4, 'soft'), f.box(f.len / 2, f.depth - 0.4, Math.max(1.2, f.len - 1.8), 0.08, 1.3, 1.7, 'ink'));
       p.blocked.push(footprint(f.box(f.len / 2, f.depth - 0.2, f.len - 0.6, 0.4, 0, 3, 'soft')));
-      block(f.box(f.len / 2, f.depth / 2 - 0.2, Math.min(2.4, f.len - 1), 0.7, 0, 0.74, 'white'));
-      for (const k of [-0.55, 0.55]) if (f.len > 2.2 || k < 0) { const q = f.at(f.len / 2 + (f.len > 2.2 ? k : 0), f.depth / 2 + 0.65); chair(q.x, q.y, OPP[back], p); }
+      const dv = Math.max(1.1, f.depth / 2 - 0.5);
+      block(f.box(f.len / 2, dv - 0.9, Math.min(3, f.len - 0.8), 0.8, 0, 0.92, 'white'));
+      const two = f.len > 3.2; for (const k of two ? [-0.75, 0.75] : [0]) { const q = f.at(f.len / 2 + k, dv + 0.2); chair(q.x, q.y, OPP[back], p); }
     }
   } else if (p.kind === 'photo') { // a backdrop wall, and a mark on the floor in front of it
-    const back = backSide(r, deck), f = frame(r, back), wl = Math.min(f.len - 1.5, 8), wall = f.box(f.len / 2, f.depth - 0.35, wl, 0.3, 0, 3.4, 'white');
+    const back = backSide(r, deck), f = frame(r, back), wl = Math.min(f.len - 1.5, 8), wall = f.box(f.len / 2, f.depth - 0.35, wl, 0.3, 0, 3.6, 'white');
     block(wall);
     p.spot = { ...f.at(f.len / 2, f.depth - 2.4), h: FACE[OPP[back]], wall: { x: wall.x, y: wall.y, w: wall.w, d: wall.d, text: /2027/.test(p.name) ? 'MIHAS 2027' : 'MIHAS 2026', face: OPP[back] } };
   } else if (p.kind === 'shop') { // shelving against the back, a counter in front
-    const back = backSide(r, deck), f = frame(r, back), n = Math.max(1, Math.floor((f.len - 1) / 2.4));
-    for (let i = 0; i < n; i++) block(f.box(f.len / 2 + (i - (n - 1) / 2) * 2.4, f.depth - 0.45, 2, 0.6, 0, 1.9, 'white'));
-    block(f.box(f.len / 2, Math.max(0.5, f.depth - 1.9), Math.min(3, f.len * 0.4), 0.6, 0, 0.95, 'soft'));
+    const back = backSide(r, deck), f = frame(r, back), n = Math.max(1, Math.floor((f.len - 1) / 2.6));
+    for (let i = 0; i < n; i++) block(f.box(f.len / 2 + (i - (n - 1) / 2) * 2.6, f.depth - 0.45, 2.2, 0.6, 0, 2.2, 'white'));
+    block(f.box(f.len / 2, Math.max(0.5, f.depth - 2), Math.min(3.4, f.len * 0.4), 0.7, 0, 1.15, 'soft'));
   } else { // back of house: a closed room
     block({ x: (r.x0 + r.x1) / 2, y: (r.y0 + r.y1) / 2, z: 0, w: W, d: D, h: 1.6, tone: 'area' });
   }

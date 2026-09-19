@@ -36,3 +36,18 @@ test('what the game says about the show is counted from the data', () => {
   assert.ok(lines.length >= 6 && lines.every((l) => l.length < 140 && !/undefined|NaN/.test(l)), lines.join('\n'));
   assert.ok(lines[0]!.includes(level.booths.length.toLocaleString()));
 });
+
+test('stands: neighbouring booths of one exhibitor are one stand, and its name sits on it', async () => {
+  const { buildStands } = await import('./stands');
+  const stands = buildStands(level), named = level.booths.filter((b) => b.name && b.id !== level.hero.id);
+  assert.equal(stands.reduce((n, s) => n + s.booths.length, 0), named.length, 'every named booth is in exactly one stand');
+  assert.equal(new Set(stands.flatMap((s) => s.booths)).size, named.length);
+  const big = [...stands].sort((a, b) => b.booths.length - a.booths.length)[0]!;
+  assert.ok(big.booths.length >= 8, `the largest stand is drawn as one block (${big.name}: ${big.booths.length} cells)`);
+  for (const s of stands) {
+    assert.ok(s.booths.every((i) => level.booths[i]!.name === s.name && level.booths[i]!.deck === s.deck));
+    assert.ok(s.booths.some((i) => Math.abs(level.booths[i]!.y - s.y) < 0.3 && Math.abs(level.booths[i]!.x - s.x) <= s.w / 2 + 0.3), `${s.name}: the name is over its own roof`);
+    assert.ok(s.w > 1.5 && s.d > 1.5);
+  }
+  assert.ok(stands.length < named.length * 0.85, `grouping merges a lot: ${named.length} cells → ${stands.length} stands`);
+});

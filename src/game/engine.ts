@@ -40,7 +40,7 @@ export class Engine {
   private heading = 0;
   private speed01 = 0;
   private route: P2[] = [];
-  private cam = { yaw: 0, pitch: 0.92, dist: 170, want: 30 };
+  private cam = { yaw: 0, pitch: 1.0, dist: 170, want: 26 };
   private camTarget = new THREE.Vector3();
   private trail: THREE.InstancedMesh;
   private trailPath: P2[] = [];
@@ -80,7 +80,7 @@ export class Engine {
 
     this.input = new Input(this.renderer.domElement, {
       onTap: (x, y) => this.tapMove(x, y),
-      onOrbit: (d) => { this.cam.yaw += d; },
+      onOrbit: (dYaw, dPitch) => { this.cam.yaw += dYaw; this.cam.pitch = THREE.MathUtils.clamp(this.cam.pitch + dPitch, 0.62, 1.32); }, // from a low three-quarter view to almost straight down
       onZoom: (f) => { this.cam.want = THREE.MathUtils.clamp(this.cam.want * f, 12, 95); },
       enabled: () => !modal.value,
     });
@@ -129,8 +129,8 @@ export class Engine {
     this.pos = { x: s.x, y: s.y }; this.heading = spawn === 'short' ? Math.PI : -Math.PI / 2; // rotation.y that faces north / west
     this.player?.dispose();
     this.player = new Astronaut({ spec: defaultAvatar(role), jacket: role ? ROLE_INFO[role].color : undefined, marker: THEME.blue });
-    this.player.group.scale.setScalar(1.25); this.world.scene.add(this.player.group);
-    this.cam.yaw = spawn === 'short' ? 0 : Math.PI / 2; this.cam.dist = 150; this.cam.want = 30; this.resize();
+    this.world.scene.add(this.player.group);
+    this.cam.yaw = spawn === 'short' ? 0 : Math.PI / 2; this.cam.dist = 150; this.cam.want = 26; this.resize();
     this.firstPing = true; this.pingAt = 0; this.trailAt = 0;
     const a = me.value?.anchor;
     if (a && Date.now() - a.at < ARRIVAL_FRESH_MS) this.arriveAt(a.stationId, a.at); else if (a) this.arrivalSeen = a.at;
@@ -225,7 +225,7 @@ export class Engine {
     this.seatGoal = null;
     const pl = herePlace.value; if (pl && !this.freeSeats(pl).includes(s)) { this.sit(); return; } // someone got there first: the next one
     this.seat = s; this.pos = { x: s.x, y: s.y }; this.heading = s.h; this.route = []; this.vel.x = this.vel.y = 0;
-    this.setPose('sit', s.z); seated.value = true; this.wantBeforeSit = this.cam.want; this.cam.want = Math.min(this.cam.want, 17);
+    this.setPose('sit', s.z); seated.value = true; this.wantBeforeSit = this.cam.want; this.cam.want = Math.min(this.cam.want, 15);
   }
   stand() {
     if (!this.seat) return;
@@ -250,12 +250,12 @@ export class Engine {
     if (this.seat) this.stand();
     const spot = herePlace.value?.spot; if (spot) { this.pos = { x: spot.x, y: spot.y }; this.heading = spot.h; this.route = []; this.vel.x = this.vel.y = 0; }
     // The photographer needs room. Look for open floor in front of the astronaut; failing that, turn them to where there is some.
-    const room = (h: number) => { let d = 0; while (d < 8.2 && this.nav.walkable(this.pos.x + Math.sin(h) * (d + 0.5), this.pos.y - Math.cos(h) * (d + 0.5))) d += 0.5; return d; };
+    const room = (h: number) => { let d = 0; while (d < 6.8 && this.nav.walkable(this.pos.x + Math.sin(h) * (d + 0.5), this.pos.y - Math.cos(h) * (d + 0.5))) d += 0.5; return d; };
     if (!spot && room(this.heading) < 6) this.heading = [0.5, -0.5, 1, 0.25, -0.25, 0.75, -0.75].map((k) => this.heading + k * Math.PI).reduce((best, h) => (room(h) > room(best) ? h : best), this.heading);
-    const dist = spot ? 8 : Math.max(3.2, Math.min(8, room(this.heading) - 0.2));
-    const W = 1080, H = 1350, cam = new THREE.PerspectiveCamera(Math.min(58, 31 * (8 / dist)), W / H, 0.5, 700), r = this.renderer;
+    const dist = spot ? 6.6 : Math.max(3, Math.min(6.6, room(this.heading) - 0.2));
+    const W = 1080, H = 1350, cam = new THREE.PerspectiveCamera(Math.min(58, 31 * (6.6 / dist)), W / H, 0.5, 700), r = this.renderer;
     const fwd = new THREE.Vector3(Math.sin(this.heading), 0, Math.cos(this.heading)), at = toWorld(this.pos.x, this.pos.y, 1.5);
-    cam.position.copy(at).addScaledVector(fwd, dist).setY(2.2); cam.lookAt(at.x, 1.05, at.z); // head to toe, with room for the caption band
+    cam.position.copy(at).addScaledVector(fwd, dist).setY(1.9); cam.lookAt(at.x, 0.92, at.z); // head to toe, with room for the caption band
     toWorld(this.pos.x, this.pos.y, 0, p.group.position); p.group.rotation.y = this.heading; p.setPose('wave'); p.animate(0.2, 0);
     const size = r.getSize(new THREE.Vector2()), pr = r.getPixelRatio(), trail = this.trail.visible;
     this.trail.visible = false; this.ping.mesh.visible = false;
@@ -338,12 +338,12 @@ export class Engine {
     const best = around[0] && around[0].d < STAMP_RADIUS_M - 0.6 ? around[0].b : null;
     if (nearStation.value?.id !== best?.id) nearStation.value = best;
 
-    // Names appear for the few booths around you — crisp type instead of 1,599 tiny roof signs.
-    const sm = stationMap.value, named = around.filter((x) => x.b.name || sm.has(x.b.id)).slice(0, BOOTH_LABELS);
+    // Every stand has its name on its roof. A floating label marks the ones whose exhibitor is in the game right now.
+    const sm = stationMap.value, named = around.filter((x) => sm.has(x.b.id)).slice(0, BOOTH_LABELS);
     this.boothEls.forEach((slot, i) => {
       const b = named[i]?.b ?? null; if (slot.booth === b) return;
       slot.booth = b;
-      if (b) { slot.el.textContent = sm.get(b.id)?.company || b.name; slot.el.classList.toggle('online', sm.has(b.id)); toWorld(b.x, b.y, this.level.booth.h + 0.9, slot.pos); }
+      if (b) { slot.el.textContent = sm.get(b.id)?.company || b.name; slot.el.classList.toggle('online', sm.has(b.id)); toWorld(b.x, b.y, this.level.booth.h + 2.7, slot.pos); } // above the green marker, clear of the name on the roof
     });
 
     // Walking into a hall or a place for the first time says what it is — counted from the floor plan, never made up.
@@ -399,7 +399,7 @@ export class Engine {
       let o = this.holos.get(h.id);
       if (o && o.cls !== h.cls) { o.a.dispose(); o.label.remove(); this.holos.delete(h.id); o = undefined; } // changed door: new jacket
       if (!o) {
-        const a = new Astronaut({ spec: defaultAvatar(h.cls), jacket: h.cls ? ROLE_INFO[h.cls].color : undefined }); a.group.scale.setScalar(1.25); this.world.scene.add(a.group);
+        const a = new Astronaut({ spec: defaultAvatar(h.cls), jacket: h.cls ? ROLE_INFO[h.cls].color : undefined }); this.world.scene.add(a.group);
         const label = Object.assign(document.createElement('div'), { className: 'lbl person', textContent: h.callsign }); this.host.appendChild(label);
         o = { a, cls: h.cls, x: h.x, y: h.y, tx: h.x, ty: h.y, h: h.h, label, seen: now, sitting: false }; this.holos.set(h.id, o);
       }
@@ -437,7 +437,7 @@ export class Engine {
     const hero = this.labelEls.find((x) => x.l.kind === 'hero'); if (hero) place(hero.el, hero.l.pos, 0, true);
     for (const s of this.boothEls) { if (s.booth) place(s.el, s.pos, 52); else s.el.style.opacity = '0'; }
     const p = new THREE.Vector3();
-    for (const o of this.holos.values()) place(o.label, toWorld(o.x, o.y, 3.5, p), 44);
+    for (const o of this.holos.values()) place(o.label, toWorld(o.x, o.y, 2.9, p), 40);
     for (const { el, l } of this.labelEls) if (l.kind !== 'hero') place(el, l.pos, l.kind === 'gate' ? 110 : 80);
   }
 

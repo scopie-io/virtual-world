@@ -4,6 +4,7 @@ import { Astronaut } from './astronaut';
 import { defaultAvatar } from '../../shared/avatar';
 import { THEME, css } from '../theme';
 import { buildPlaces, taken, type Place, type Tone } from './places';
+import { buildStands, type Stand } from './stands';
 
 // Floor-plan metres → world. +x east, +y north ⇒ world +x east, −z north.
 export const CX = 95, CY = 72;
@@ -34,6 +35,7 @@ export class World {
   private heroBits!: { X: THREE.Group; ring: THREE.Mesh; crew: Astronaut[] };
   readonly places: Place[];
   private pop: { i: number; t: number } | null = null;
+  private standOf = new Map<number, Stand>();
   private stampedIds: string[] = [];
 
   constructor(private level: LevelData) {
@@ -53,9 +55,15 @@ export class World {
 
   private levels() {
     const slab = this.flat(THEME.floor), carpet = this.decal({ color: THEME.hall }), curb = this.flat(THEME.line);
+    // The building stands on something: a ground that fades into the sky, and a soft shadow under each level.
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: THEME.ground })); ground.position.y = -0.82; this.scene.add(ground);
+    const shade = new THREE.MeshBasicMaterial({ color: THEME.ink, transparent: true, opacity: 0.05, depthWrite: false });
     for (const d of this.level.decks) {
       const w = d.x1 - d.x0, dp = d.y1 - d.y0, c = toWorld((d.x0 + d.x1) / 2, (d.y0 + d.y1) / 2);
       const m = new THREE.Mesh(new THREE.BoxGeometry(w + 6, 0.8, dp + 6), slab); m.position.set(c.x, -0.4, c.z); this.scene.add(m);
+      for (const [grow, y] of [[5, -0.815], [2.5, -0.81], [1, -0.805]] as const) { // three stacked quads ≈ a blurred edge, no texture
+        const s = new THREE.Mesh(new THREE.PlaneGeometry(w + 6 + grow * 2, dp + 6 + grow * 2).rotateX(-Math.PI / 2), shade); s.position.set(c.x + 1.5, y, c.z + 1.5); s.renderOrder = 1; this.scene.add(s);
+      }
     }
     for (const h of this.level.halls) {
       const m = new THREE.Mesh(new THREE.PlaneGeometry(h.x1 - h.x0, h.y1 - h.y0).rotateX(-Math.PI / 2), carpet);
@@ -101,17 +109,23 @@ export class World {
 
     // The seated crowd: scenery, in grey — never blue or green, which are real people.
     const crowd = this.places.flatMap((pl) => [...pl.seats.filter((_, i) => taken(pl, i)).map((s) => ({ s, sit: true })), ...(pl.presenter ? [{ s: pl.presenter, sit: false }] : [])]);
-    const body = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.3, 0.5, 4, 10), this.flat(THEME.inkSoft), Math.max(1, crowd.length));
-    const head = new THREE.InstancedMesh(new THREE.SphereGeometry(0.46, 18, 14), this.flat(0xffffff), Math.max(1, crowd.length));
-    const visor = new THREE.InstancedMesh(new THREE.SphereGeometry(0.36, 16, 12), this.flat(THEME.ink), Math.max(1, crowd.length));
-    const R = new THREE.Matrix4(), off = new THREE.Vector3();
+    // Same proportions as the player's astronaut (astronaut.ts), in four instanced meshes instead of eighteen each.
+    const N = Math.max(1, crowd.length);
+    const body = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.36, 0.45, 4, 10), this.flat(THEME.inkSoft), N);
+    const head = new THREE.InstancedMesh(new THREE.SphereGeometry(0.56, 20, 14), this.flat(0xffffff), N);
+    const visor = new THREE.InstancedMesh(new THREE.SphereGeometry(0.47, 18, 12), this.flat(THEME.ink), N);
+    const legs = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.26, 1), this.flat(THEME.ink), N);
+    const R = new THREE.Matrix4(), S = new THREE.Matrix4(), off = new THREE.Vector3();
     crowd.forEach(({ s, sit }, i) => {
-      const y = s.z + (sit ? 0.42 : 0.85); R.makeRotationY(s.h);
-      toWorld(s.x, s.y, y, p); body.setMatrixAt(i, M.copy(R).setPosition(p));
-      toWorld(s.x, s.y, y + 0.78, p); head.setMatrixAt(i, M.copy(R).setPosition(p));
-      off.set(0, 0, 0.17).applyMatrix4(R); visor.setMatrixAt(i, M.copy(R).setPosition(p.x + off.x, p.y - 0.02, p.z + off.z));
+      const lift = sit ? s.z - 0.52 : s.z; R.makeRotationY(s.h);
+      toWorld(s.x, s.y, lift + 0.92, p); body.setMatrixAt(i, M.copy(R).setPosition(p));
+      toWorld(s.x, s.y, lift + 1.72, p); head.setMatrixAt(i, M.copy(R).setPosition(p));
+      off.set(0, 0, 0.17).applyMatrix4(R); visor.setMatrixAt(i, M.copy(R).multiply(S.makeScale(1, 0.86, 0.9)).setPosition(p.x + off.x, p.y - 0.02, p.z + off.z));
+      // sitting: thighs forward along the seat; standing: legs straight down
+      if (sit) { off.set(0, 0, 0.3).applyMatrix4(R); toWorld(s.x, s.y, s.z + 0.1, p); legs.setMatrixAt(i, M.copy(R).multiply(S.makeScale(1, 1, 0.6)).setPosition(p.x + off.x, p.y, p.z + off.z)); }
+      else { toWorld(s.x, s.y, s.z + 0.3, p); legs.setMatrixAt(i, M.copy(R).multiply(S.makeScale(0.9, 2.3, 0.3)).setPosition(p)); }
     });
-    for (const m of [body, head, visor]) { m.count = crowd.length; m.frustumCulled = false; this.scene.add(m); }
+    for (const m of [body, head, visor, legs]) { m.count = crowd.length; m.frustumCulled = false; this.scene.add(m); }
   }
 
   /** The photo wall: big quiet lettering to stand in front of, and a blue mark on the floor — blue, because it is something you can do. */
@@ -153,12 +167,15 @@ export class World {
     // A hair under full width, so neighbours in a row read as separate booths rather than one slab.
     const body = new THREE.InstancedMesh(new THREE.BoxGeometry(BW - 0.16, BH, BD - 0.16), this.flat(0xffffff), n);
     const M = new THREE.Matrix4(), C = new THREE.Color(THEME.booth), p = new THREE.Vector3();
+    const stands = buildStands(this.level); for (const st of stands) for (const i of st.booths) this.standOf.set(i, st);
     list.forEach((b, i) => {
       this.boothIndex.set(b.id, i);
       const s = b.id === this.level.hero.id ? 1e-4 : 1; // ours is built by hand in theX()
-      toWorld(b.x, b.y, BH / 2, p); M.makeScale(s, s, s * (depth.get(b.deck) ?? 1)).setPosition(p); body.setMatrixAt(i, M); body.setColorAt(i, C);
+      const joined = (this.standOf.get(i)?.booths.length ?? 1) > 1, fx = joined ? BW / (BW - 0.16) : 1, fz = joined ? BD / (BD - 0.16) : 1; // cells of one stand close up
+      toWorld(b.x, b.y, BH / 2, p); M.makeScale(s * fx, s, s * fz * (depth.get(b.deck) ?? 1)).setPosition(p); body.setMatrixAt(i, M); body.setColorAt(i, C);
     });
     body.name = 'booths'; this.body = body; this.scene.add(body);
+    this.names(stands);
 
     // Stamped: a gold roof panel. Exhibitor at the counter: a green marker above the booth. Both are drawn only where needed.
     this.roofs = new THREE.InstancedMesh(new THREE.BoxGeometry(BW - 0.5, 0.12, BD - 0.5), this.flat(THEME.gold), n);
@@ -166,14 +183,48 @@ export class World {
     for (const m of [this.roofs, this.pins]) { m.count = 0; m.frustumCulled = false; this.scene.add(m); }
   }
 
+  /**
+   * The exhibitor's name, written on the roof of their stand — once per stand, as wide as the stand allows.
+   * One texture, one draw call: every name is drawn into a packed atlas and shown on an instanced quad that fades out
+   * with distance in proportion to its size, so far-away lettering never turns into shimmer.
+   */
+  private names(stands: Stand[]) {
+    const CW = 176, SIZE = 2048, cells = stands.map((s) => { const aspect = Math.min(7, Math.max(3, s.w / s.d)); return { s, aspect, h: Math.round(CW / aspect), x: 0, y: 0 }; }).sort((a, b) => b.h - a.h);
+    let x = 0, y = 0, shelf = 0; const fit: typeof cells = [];
+    for (const c of cells) { if (x + CW > SIZE) { x = 0; y += shelf + 2; shelf = 0; } if (y + c.h > SIZE) break; c.x = x; c.y = y; x += CW + 2; shelf = Math.max(shelf, c.h); fit.push(c); }
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = SIZE; const g = canvas.getContext('2d')!; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = css(THEME.ink);
+    for (const c of fit) { // one line if it fits at a readable size, otherwise two
+      const words = c.s.name.split(/\s+/), size = (lines: string[]) => { let f = Math.min(c.h / lines.length * 0.62, 34); g.font = `800 ${f}px Urbanist, Arial`; const w = Math.max(...lines.map((l) => g.measureText(l).width)); if (w > CW - 12) f *= (CW - 12) / w; return f; };
+      let lines = [c.s.name]; if (words.length > 1 && c.h >= 44) { const half = Math.ceil(words.length / 2), two = [words.slice(0, half).join(' '), words.slice(half).join(' ')]; if (size(two) * 0.9 > size(lines)) lines = two; }
+      const f = size(lines); g.font = `800 ${f}px Urbanist, Arial`;
+      lines.forEach((l, i) => g.fillText(l, c.x + CW / 2, c.y + c.h / 2 + (i - (lines.length - 1) / 2) * f * 1.08, CW - 8));
+    }
+    const tex = new THREE.CanvasTexture(canvas); tex.flipY = false; tex.anisotropy = 8; tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter;
+    const geo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), uv = new Float32Array(fit.length * 4), fade = new Float32Array(fit.length);
+    const mesh = new THREE.InstancedMesh(geo, new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, uniforms: { map: { value: tex } },
+      vertexShader: 'attribute vec4 aUv; attribute float aFade; varying vec2 vUv; varying float vA; void main(){ vUv = aUv.xy + vec2(uv.x, 1.0 - uv.y) * aUv.zw; vec4 mv = modelViewMatrix * instanceMatrix * vec4(position, 1.0); vA = 1.0 - smoothstep(aFade * 0.7, aFade, -mv.z); gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'uniform sampler2D map; varying vec2 vUv; varying float vA; void main(){ float a = texture2D(map, vUv).a * vA * 0.62; if (a < 0.02) discard; gl_FragColor = vec4(0.106, 0.129, 0.188, a); }',
+    }), Math.max(1, fit.length));
+    const M = new THREE.Matrix4(), p = new THREE.Vector3();
+    fit.forEach((c, i) => {
+      const d = Math.min(c.s.d, c.s.w / c.aspect), w = d * c.aspect; // keep the cell's proportions: lettering is never stretched
+      toWorld(c.s.x, c.s.y, this.boothH + 0.14, p); M.makeScale(w, 1, d).setPosition(p); mesh.setMatrixAt(i, M);
+      uv.set([c.x / SIZE, c.y / SIZE, CW / SIZE, c.h / SIZE], i * 4); fade[i] = 34 + w * 9; // big stands can be read from further away
+    });
+    geo.setAttribute('aUv', new THREE.InstancedBufferAttribute(uv, 4)); geo.setAttribute('aFade', new THREE.InstancedBufferAttribute(fade, 1));
+    mesh.count = fit.length; mesh.frustumCulled = false; mesh.renderOrder = 6; this.scene.add(mesh);
+  }
+
   /** The live list of booths that exhibitors have brought online. */
   setStations(list: StationView[]) {
     const next = new Set(list.map((s) => s.id)), C = new THREE.Color();
-    for (const id of this.online) if (!next.has(id)) { const i = this.boothIndex.get(id); if (i != null) this.body.setColorAt(i, C.set(THEME.booth)); }
+    const cells = (i: number) => this.standOf.get(i)?.booths ?? [i];
+    for (const id of this.online) if (!next.has(id)) { const i = this.boothIndex.get(id); if (i != null) for (const k of cells(i)) this.body.setColorAt(k, C.set(THEME.booth)); }
     this.pinned = [];
     for (const s of list) {
       const i = this.boothIndex.get(s.id); if (i == null) continue;
-      if (!this.online.has(s.id)) this.body.setColorAt(i, C.set(THEME.greenSoft));
+      for (const k of cells(i)) this.body.setColorAt(k, C.set(THEME.greenSoft));
       if (s.hosted && this.pinned.length < 256) this.pinned.push(i);
     }
     this.online = next; this.pins.count = this.pinned.length;
@@ -207,11 +258,12 @@ export class World {
     for (const s of [-1, 1]) { const side = new THREE.Mesh(new THREE.BoxGeometry(BW, 2.5, 0.1), white); side.position.set(0, 1.35, s * (BD / 2 - 0.05)); hero.add(side); }
     const counter = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1, 1.5), ink); counter.position.set(-0.75, 0.6, 0.45); hero.add(counter);
 
-    const X = new THREE.Group(), bar = (color: number, rz: number) => { const m = new THREE.Mesh(new THREE.BoxGeometry(1.1, 5.4, 0.7), this.flat(color)); m.rotation.z = rz; return m; };
-    X.add(bar(THEME.xBlue, Math.PI / 5), bar(THEME.xYellow, -Math.PI / 5)); X.position.y = 8.5;
+    // The two bars cross without sharing a face (one is a touch slimmer), so the middle never flickers.
+    const X = new THREE.Group(), bar = (color: number, rz: number, depth: number) => { const m = new THREE.Mesh(new THREE.BoxGeometry(1.1, 5.4, depth), this.flat(color)); m.rotation.z = rz; return m; };
+    X.add(bar(THEME.xBlue, Math.PI / 5, 0.7), bar(THEME.xYellow, -Math.PI / 5, 0.56)); X.position.y = 8.5;
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.94, 1, 64).rotateX(-Math.PI / 2), this.decal({ color: THEME.gold, transparent: true })); ring.position.y = 0.04; ring.renderOrder = 3;
     const crew = [-0.85, 0.2, 0.95].map((z, i) => { // our booth crew
-      const a = new Astronaut({ spec: defaultAvatar(null), jacket: THEME.ink }); a.group.position.set([-0.2, 0.55, -0.4][i]!, 0.1, z); a.group.rotation.y = -Math.PI / 2 + (i - 1) * 0.35; a.group.scale.setScalar(0.95); return a;
+      const a = new Astronaut({ spec: defaultAvatar(null), jacket: THEME.ink }); a.group.position.set([-0.2, 0.55, -0.4][i]!, 0.1, z); a.group.rotation.y = -Math.PI / 2 + (i - 1) * 0.35; a.group.scale.setScalar(0.82); return a;
     });
     hero.add(X, ring, ...crew.map((c) => c.group));
     this.heroBits = { X, ring, crew };

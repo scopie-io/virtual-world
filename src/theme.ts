@@ -6,6 +6,7 @@
 // The only other colour in the world is the X itself, in its own blue and yellow.
 export const THEME = {
   paper: 0xf2f0eb,      // sky, page background
+  ground: 0xe9e6df,     // what the building stands on; fades into the sky
   floor: 0xd9d5cb,      // the slab each level stands on
   hall: 0xe6e3db,       // carpet inside a hall
   line: 0xc6c1b5,       // low walls
