@@ -13,7 +13,7 @@ The first screen has two buttons and nothing else to decide.
 | | **I'm visiting** | **I'm exhibiting** |
 |---|---|---|
 | What it is | One mission, five chapters, about five minutes | Three steps on your own booth, about two minutes |
-| Wears | the astronaut, cyan | the astronaut, yellow |
+| Wears | the astronaut, blue jacket | the astronaut, green jacket |
 | Shown as | "Visitor 4821" until they have a card, then "Aisyah R." | the same |
 
 Anyone can switch doors from the menu. Whoever brings a booth online becomes an exhibitor.
@@ -74,7 +74,7 @@ Keyboard: WASD / arrows · space jump · E the big button · 1 2 3 wave, cheer, 
 
 ## The exhibitor's three steps
 
-1. **Light up** — find your booth number, add your name, one line and a colour. It glows for every player at once.
+1. **Light up** — find your booth number, add your name and one line for visitors. It turns green for every player at once.
 2. **Get scanned** — keep your booth QR open on a phone or tablet at the counter. A visitor who scans it scores 50
    and is marked "met in person" on your list.
 3. **Lead** — visitors choose which fields of their card to leave with you. Your list grows; export it as CSV.

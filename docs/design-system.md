@@ -51,7 +51,7 @@ in front of them follow the same rule: the wall is white with ink lettering, the
 - **One thing at a time.** Top-left: one card — chapter, title, progress, and the distance/"Take me there" row when a
   trail is showing. Tap it on a phone to read the full instruction. Points sit in its corner. Nothing else up there.
 - **Thumb zone.** Bottom-centre: the one thing you can do right here (stamp, get card, lift). Bottom-right: the three
-  things you can always do (find, swap cards, menu). The lower-left is left free for the joystick.
+  things you can always do (map, express, menu). The lower-left is left free for the joystick.
 - **Sheets** rise from the bottom on a phone and are centred dialogs on a desk. One primary (blue) button per sheet.
 - **Feedback for every input:** tap the floor → a blue ring where you are going; stamp → the gold roof drops in with a
   small overshoot and a toast comes down from the top; buttons press in; starts and stops have a little weight.
