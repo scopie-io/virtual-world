@@ -1,4 +1,4 @@
-import type { MissionTemplate, PlayerClass, ShareField, StampProof } from './rules.js';
+import type { MissionTemplate, Role, ShareField, StampProof } from './rules.js';
 import type { AvatarSpec } from './avatar.js';
 
 export interface Rect { x0: number; y0: number; x1: number; y1: number }
@@ -32,20 +32,17 @@ export interface LevelData {
 /** What the client knows about the signed-in player. Never contains other people's personal data. */
 export interface Me {
   id: string;
+  /** The name other players see: "Visitor 4821" until they have a card, then "Aisyah R.". */
   callsign: string;
-  cls: PlayerClass | null;
+  /** visitor | exhibitor — null until they choose on the first screen */
+  cls: Role | null;
+  /** points */
   xp: number;
-  signal: number;
-  rank: { id: string; label: string };
-  nextRank: { id: string; label: string; xp: number } | null;
-  blockedBy: 'passport' | 'docked' | null;
   stamps: string[];
-  halls: number[];
   passport: PassportView | null;
   docked: boolean;
   ticket: { token: string; code: string } | null;
   avatar: AvatarSpec;
-  rankIndex: number;
   sharePrefs: ShareField[];
   links: number;
   /** Stations this player has shared a Passport with, and those where a host verified the contact. */
@@ -87,8 +84,7 @@ export type ApiResult<T> = ApiOk<T> | ApiErr;
 
 export interface StampRequest { stationId: string; proof: StampProof; beacon?: string; code?: string }
 export interface PresencePing { x: number; y: number; h: number; deck?: boolean; sigma?: number; /** steps counted since the last ping (deck mode) */ steps?: number }
-export interface Hologram { id: string; callsign: string; cls: PlayerClass | null; x: number; y: number; h: number; rank: string; av: string; /** really there, following real steps */ deck: boolean; /** position uncertainty in metres */ sigma: number }
-export interface LeaderRow { callsign: string; cls: PlayerClass | null; xp: number; rank: string; docked: boolean; you?: boolean }
+export interface Hologram { id: string; callsign: string; cls: Role | null; x: number; y: number; h: number; av: string; /** really there, following real steps */ deck: boolean; /** position uncertainty in metres */ sigma: number }
 
 export interface CrewTicketView { callsign: string; name: string; company: string; role: string; alreadyDocked: boolean }
 
@@ -105,7 +101,7 @@ export interface HostLead { callsign: string; name: string; company: string; rol
 
 export interface SharedCard { name?: string; company?: string; role?: string; phone?: string; email?: string }
 export interface LinkCode { code: string; url: string; expiresInMs: number }
-export interface LinkPeek { callsign: string; cls: PlayerClass | null; rank: string; shares: ShareField[]; alreadyLinked: boolean }
+export interface LinkPeek { callsign: string; cls: Role | null; shares: ShareField[]; alreadyLinked: boolean }
 export interface Contact {
   kind: 'person' | 'station';
   key: string;
@@ -120,13 +116,13 @@ export interface Contact {
 
 export interface SectorState {
   hall: number;
-  holder: PlayerClass | null;
+  holder: Role | null;
   /** Live, decayed and underdog-normalised scores since the last tick. */
-  scores: Record<PlayerClass, number>;
+  scores: Record<Role, number>;
 }
-export interface SectorsView { sectors: SectorState[]; nextTickInMs: number; crewSizes: Record<PlayerClass, number> }
+export interface SectorsView { sectors: SectorState[]; nextTickInMs: number; crewSizes: Record<Role, number> }
 
-export interface CrewStationRow extends StationView { ownerCallsign: string; ownerName: string; ownerCompany: string; claimedAt: number }
+export interface CrewStationRow extends StationView { visits: number; ownerCallsign: string; ownerName: string; ownerCompany: string; claimedAt: number }
 
 /* ---------------- M3 ---------------- */
 
@@ -164,14 +160,16 @@ export interface GcView {
 export type FlagKey = (typeof import('./rules.js').FLAG_KEYS)[number];
 export interface TrustView { score: number; trusted: boolean; parts: { geofence: boolean; hostCode: boolean; plausible: boolean; steps: boolean; human: boolean } }
 export type BoardKind = 'xp' | 'today' | 'explorer' | 'connector' | 'stations' | 'companies';
-export interface BoardRow { kind: 'player' | 'station' | 'team'; title: string; sub: string; value: number; unit: string; cls?: PlayerClass | null; /** passes the trust bar (players) / verified exhibitor (teams) */ trusted?: boolean; you?: boolean }
+export interface BoardRow { kind: 'player' | 'station' | 'team'; title: string; sub: string; value: number; unit: string; cls?: Role | null; /** passes the trust bar (players) / verified exhibitor (teams) */ trusted?: boolean; you?: boolean }
 export interface ReviewRow { callsign: string; name: string; company: string; value: number; unit: string; xp: number; trust: TrustView; flags: number; banned: boolean; mix: string }
 export interface TeamView { name: string; owner: boolean; code: string | null; members: { callsign: string; xp: number; you?: boolean }[]; score: number }
+/** What is special today. */
+export interface TodayView { drop: DailyDrop | null }
 export interface DailyDrop { title: string; stationId: string; label: string; x: number; y: number; bonus: number; done: boolean }
 /** Everything the booth's big screen shows. Positions only — no names, no callsigns. */
 export interface ScreenView {
-  dots: { x: number; y: number; cls: PlayerClass | null; deck: boolean }[];
+  dots: { x: number; y: number; cls: Role | null; deck: boolean }[];
   online: number; onsite: number;
   totals: { players: number; passports: number; docked: number; stamps: number; links: number; stations: number };
-  board: BoardRow[]; sectors: SectorsView; storm: StormView | null; drop: DailyDrop | null; joinUrl: string;
+  board: BoardRow[]; /** most visited booths */ booths: BoardRow[]; sectors: SectorsView; storm: StormView | null; drop: DailyDrop | null; joinUrl: string;
 }

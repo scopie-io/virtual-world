@@ -2,10 +2,10 @@ import type { Db, Stmt } from './db/types.js';
 import type { Signer } from './crypto.js';
 import { shortCode } from './crypto.js';
 import type { Presence } from './presence.js';
-import type { CrewTicketView, Hologram, LeaderRow, LevelData, Me, PassportInput, PresencePing, StampRequest, XpEvent } from '../shared/types.js';
+import type { CrewTicketView, Hologram, LevelData, Me, PassportInput, PresencePing, StampRequest, XpEvent } from '../shared/types.js';
 import {
-  BASE_XP, CLASSES, DEFAULT_SHARE, GOLDEN_TICKET_TTL_MS, HOST_GRACE_WINDOWS, HOST_WINDOW_MS, INFLUENCE, INFLUENCE_PRESENCE, PRESENCE_MULT, RANKS,
-  SHARE_FIELDS, STAMP_MIN_INTERVAL_MS, STAMP_RADIUS_M, rankFor, signalFor, stampXp, type PlayerClass, type Presence as Presence2, type ShareField,
+  DEFAULT_SHARE, EXPLORE_XP, FEATURES, HOST_GRACE_WINDOWS, HOST_WINDOW_MS, INFLUENCE, INFLUENCE_PRESENCE, NAME_ON_BOARD, POINTS, PRIZE_CODE_TTL_MS, REMOTE_SHARE, ROLES, ROLE_INFO,
+  SHARE_FIELDS, STAMP_MIN_INTERVAL_MS, STAMP_RADIUS_M, stampPoints, type Features, type Presence as Presence2, type Role, type ShareField,
 } from '../shared/rules.js';
 import { decodeAvatar, defaultAvatar, encodeAvatar, validateAvatar, type AvatarSpec } from '../shared/avatar.js';
 
@@ -30,9 +30,7 @@ export interface GameHooks {
 export interface PlayerRow { id: string; callsign: string; cls: string | null; xp: number; docked_at: number | null }
 export interface PassportRow { slug: string; name: string; company: string; role: string; phone: string; email: string; show_contact: number }
 
-const ADJ = ['Swift', 'Bright', 'Calm', 'Bold', 'Lucky', 'Solar', 'Lunar', 'Cosmic', 'Quiet', 'Rapid', 'Golden', 'Azure', 'Nova', 'Turbo', 'Stellar', 'Misty'];
-const NOUN = ['Comet', 'Orbit', 'Falcon', 'Rover', 'Pilot', 'Nebula', 'Rocket', 'Voyager', 'Pulsar', 'Meteor', 'Zenith', 'Beacon', 'Vector', 'Quasar', 'Drifter', 'Scout'];
-const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)]!;
+const digits = (n: number) => String(Math.floor(Math.random() * 10 ** n)).padStart(n, '0');
 
 const MYT_OFFSET_MS = 8 * 3600 * 1000;
 export const dayOf = (t: number) => Math.floor((t + MYT_OFFSET_MS) / 86_400_000);
@@ -46,7 +44,6 @@ export const cleanFields = (input: unknown): ShareField[] => {
 
 export class Game {
   readonly stations: Map<string, LevelData['booths'][number]>;
-  private heat = { at: 0, pct: new Map<string, number>() };
   /** Per-player caches so presence pings do not hit the DB. */
   private seenHalls = new Map<string, Set<number>>();
   private seenLandmarks = new Map<string, Set<string>>();
@@ -61,23 +58,32 @@ export class Game {
     readonly level: LevelData,
     readonly publicOrigin: string,
     readonly now: () => number = Date.now,
+    /** Which of the switched-off systems run. The simple game runs none of them. */
+    readonly features: Features = FEATURES,
   ) {
     this.stations = new Map(level.booths.map((b) => [b.id, b]));
   }
 
   /* ---------------- players ---------------- */
 
+  /** Until they have a card a player is "Visitor 4821"; with one, "Aisyah R." (NAME_ON_BOARD). Names are unique. */
+  private async rename(id: string, base: string, numbered: boolean): Promise<void> {
+    for (let i = 0; i < 12; i++) {
+      const name = numbered ? `${base} ${digits(i < 8 ? 4 : 7)}` : i === 0 ? base : `${base} ${i + 1}`;
+      try { await this.db.run('UPDATE players SET callsign = ? WHERE id = ?', [name, id]); return; } catch { /* taken — try the next */ }
+    }
+  }
+
   async createGuest(): Promise<string> {
     const id = crypto.randomUUID();
     const t = this.now();
     for (let i = 0; i < 8; i++) {
-      const callsign = `${pick(ADJ)}-${pick(NOUN)}-${10 + Math.floor(Math.random() * 90)}`;
       try {
-        await this.db.run('INSERT INTO players (id, callsign, created_at, last_seen) VALUES (?,?,?,?)', [id, callsign, t, t]);
+        await this.db.run('INSERT INTO players (id, callsign, created_at, last_seen) VALUES (?,?,?,?)', [id, `Guest ${digits(7)}`, t, t]);
         return id;
-      } catch { /* callsign collision — try again */ }
+      } catch { /* name collision — try again */ }
     }
-    throw new GameError('callsign', 'Could not allocate a callsign', 500);
+    throw new GameError('callsign', 'Could not start a new player', 500);
   }
 
   async exists(id: string): Promise<boolean> {
@@ -96,19 +102,13 @@ export class Game {
 
   async requirePassport(id: string): Promise<PassportRow> {
     const p = await this.passportOf(id);
-    if (!p) throw new GameError('need_passport', 'Claim your Passport at the Launch Pad first', 403);
+    if (!p) throw new GameError('need_passport', 'Get your digital business card first — it is free at the X, Booth 8H18B', 403);
     return p;
-  }
-
-  async rankIndex(id: string): Promise<number> {
-    const p = await this.player(id);
-    const r = rankFor(p.xp, { passport: !!(await this.passportOf(id)), docked: p.docked_at != null });
-    return RANKS.findIndex((x) => x.id === r.rank.id);
   }
 
   async avatarOf(id: string, cls: string | null): Promise<AvatarSpec> {
     const row = await this.db.get<{ spec: string }>('SELECT spec FROM avatars WHERE player_id = ?', [id]);
-    return decodeAvatar(row?.spec) ?? defaultAvatar(cls as PlayerClass | null);
+    return decodeAvatar(row?.spec) ?? defaultAvatar(cls as Role | null);
   }
 
   async sharePrefs(id: string): Promise<ShareField[]> {
@@ -118,9 +118,8 @@ export class Game {
 
   async me(id: string): Promise<Me> {
     const p = await this.player(id);
-    const [stamps, halls, pass, ticket, avatar, sharePrefs, links, shared, verified, hosting] = await Promise.all([
+    const [stamps, pass, ticket, avatar, sharePrefs, links, shared, verified, hosting] = await Promise.all([
       this.db.all<{ station_id: string }>('SELECT station_id FROM stamps WHERE player_id = ?', [id]),
-      this.db.all<{ hall: number }>('SELECT hall FROM halls_seen WHERE player_id = ?', [id]),
       this.passportOf(id),
       this.db.get<{ id: string; code: string; redeemed_at: number | null }>('SELECT id, code, redeemed_at FROM tickets WHERE player_id = ?', [id]),
       this.avatarOf(id, p.cls),
@@ -131,7 +130,6 @@ export class Game {
       this.db.all<{ station_id: string }>("SELECT station_id FROM stations WHERE owner_id = ? AND status != 'revoked'", [id]),
     ]);
     const docked = p.docked_at != null;
-    const r = rankFor(p.xp, { passport: !!pass, docked });
     const t = this.now(), anchor = (await this.hooks.anchorOf?.(id)) ?? null;
     return {
       onsite: (await this.hooks.isOnsite?.(id, t)) ?? false,
@@ -139,15 +137,9 @@ export class Game {
       anchor,
       id: p.id.slice(0, 8),
       callsign: p.callsign,
-      cls: (p.cls as PlayerClass | null) ?? null,
+      cls: (p.cls as Role | null) ?? null,
       xp: p.xp,
-      signal: signalFor(p.xp),
-      rank: { id: r.rank.id, label: r.rank.label },
-      rankIndex: RANKS.findIndex((x) => x.id === r.rank.id),
-      nextRank: r.next ? { id: r.next.id, label: r.next.label, xp: r.next.xp } : null,
-      blockedBy: r.blockedBy ?? null,
       stamps: stamps.map((s) => s.station_id),
-      halls: halls.map((h) => h.hall),
       passport: pass ? { slug: pass.slug, name: pass.name, company: pass.company, role: pass.role, url: `${this.publicOrigin}/p/${pass.slug}` } : null,
       docked,
       ticket: ticket && !ticket.redeemed_at ? { token: await this.signer.sign(`t:${ticket.id}`), code: ticket.code } : null,
@@ -168,25 +160,23 @@ export class Game {
     ];
   }
 
-  /** Crew influence (Systems doc §8.1). hall 0 = not tied to a sector. Players without a class have no crew yet. */
+  /** Sector control (switched off in the simple game). hall 0 = not tied to a sector. */
   influence(id: string, cls: string | null, hall: number, weight: number, t: number): Stmt[] {
-    return cls ? [['INSERT INTO influence_events (crew, hall, weight, player_id, created_at) VALUES (?,?,?,?,?)', [cls, hall, weight, id, t]]] : [];
+    return this.features.sectors && cls ? [['INSERT INTO influence_events (crew, hall, weight, player_id, created_at) VALUES (?,?,?,?,?)', [cls, hall, weight, id, t]]] : [];
   }
 
-  async suitUp(id: string, cls: string): Promise<XpEvent[]> {
-    if (!CLASSES.includes(cls as PlayerClass)) throw new GameError('bad_class', 'Unknown class');
+  /** "I'm visiting" / "I'm exhibiting". Free to change; it decides the colour you wear and which journey you are shown. */
+  async start(id: string, role: string): Promise<void> {
+    if (!ROLES.includes(role as Role)) throw new GameError('bad_role', 'Choose visitor or exhibitor');
     const p = await this.player(id);
-    const t = this.now();
-    const first = p.cls == null;
-    const stmts: Stmt[] = [['UPDATE players SET cls = ?, last_seen = ? WHERE id = ?', [cls, t, id]]];
-    if (first) stmts.push(...this.award(id, 'suit_up', BASE_XP.suit_up, null, { cls }, t));
-    await this.db.batch(stmts);
+    await this.db.run('UPDATE players SET cls = ?, last_seen = ? WHERE id = ?', [role, this.now(), id]);
+    if (!(NAME_ON_BOARD && (await this.passportOf(id))) && !p.callsign.startsWith(ROLE_INFO[role as Role].label)) await this.rename(id, ROLE_INFO[role as Role].label, true);
     this.avatarCode.delete(id);
-    return first ? [{ action: 'suit_up', xp: BASE_XP.suit_up }] : [];
   }
 
   async setAvatar(id: string, input: unknown): Promise<void> {
-    const spec = validateAvatar(input, await this.rankIndex(id));
+    if (!this.features.avatars) throw new GameError('off', 'Everyone wears the same suit in this game', 404);
+    const spec = validateAvatar(input);
     if (!spec) throw new GameError('bad_avatar', 'That look is not available yet');
     const code = encodeAvatar(spec);
     this.avatarCode.delete(id);
@@ -205,7 +195,7 @@ export class Game {
     const p = await this.player(id);
     let av = this.avatarCode.get(id);
     if (!av || this.now() - av.at > 30_000) { av = { code: encodeAvatar(await this.avatarOf(id, p.cls)), at: this.now() }; this.avatarCode.set(id, av); }
-    return { id, callsign: p.callsign, cls: p.cls as PlayerClass | null, rank: rankFor(p.xp, { passport: true, docked: p.docked_at != null }).rank.label, av: av.code, ...at };
+    return { id, callsign: p.callsign, cls: p.cls as Role | null, av: av.code, ...at };
   }
 
   /** deck = "my avatar is following my real steps". Only honoured for players who are verifiably on site. */
@@ -224,11 +214,12 @@ export class Game {
     return { holograms: await this.presence.near(id, pos.x, pos.y, t, this.hooks.hiddenSet?.() ?? new Set()), events, online: await this.presence.online(t), deck };
   }
 
-  /** First entry to a hall, and daily landmark check-ins, discovered from movement — at full value when walked for real. */
+  /** Switched off in the simple game: first entry to a hall, and daily landmark check-ins, discovered from movement. */
   private async discover(id: string, x: number, y: number, t: number, presence: Presence2): Promise<XpEvent[]> {
+    if (!this.features.explore) return [];
     const events: XpEvent[] = [];
     const stmts: Stmt[] = [];
-    const mult = PRESENCE_MULT[presence];
+    const mult = presence === 'onsite' ? 1 : REMOTE_SHARE;
 
     let halls = this.seenHalls.get(id);
     if (!halls) {
@@ -239,7 +230,7 @@ export class Game {
     if (hall != null && !halls.has(hall)) {
       halls.add(hall);
       if (await this.db.get('SELECT 1 AS x FROM halls_seen WHERE player_id = ? AND hall = ?', [id, hall])) return this.discoverLandmarks(id, x, y, t, presence, events, stmts);
-      const xp = Math.round(BASE_XP.hall_first * mult);
+      const xp = Math.round(EXPLORE_XP.hall_first * mult);
       stmts.push(['INSERT OR IGNORE INTO halls_seen (player_id, hall, created_at) VALUES (?,?,?)', [id, hall, t]], ...this.award(id, 'hall_first', xp, String(hall), { presence }, t));
       events.push({ action: 'hall_first', xp, target: `Hall ${hall}` });
     }
@@ -248,7 +239,7 @@ export class Game {
   }
 
   private async discoverLandmarks(id: string, x: number, y: number, t: number, presence: Presence2, events: XpEvent[], stmts: Stmt[]): Promise<XpEvent[]> {
-    const mult = PRESENCE_MULT[presence];
+    const mult = presence === 'onsite' ? 1 : REMOTE_SHARE;
     const day = dayOf(t);
     let marks = this.seenLandmarks.get(id);
     if (!marks) {
@@ -260,7 +251,7 @@ export class Game {
       if (Math.hypot(dx, dy) > 2.5 || marks.has(`${day}:${a.id}`)) continue;
       marks.add(`${day}:${a.id}`);
       if (await this.db.get('SELECT 1 AS x FROM landmarks_seen WHERE player_id = ? AND area_id = ? AND day = ?', [id, a.id, day])) continue;
-      const xp = Math.max(1, Math.round(BASE_XP.landmark * mult));
+      const xp = Math.max(1, Math.round(EXPLORE_XP.landmark * mult));
       stmts.push(['INSERT OR IGNORE INTO landmarks_seen (player_id, area_id, day, created_at) VALUES (?,?,?,?)', [id, a.id, day, t]], ...this.award(id, 'landmark', xp, a.id, { presence }, t));
       events.push({ action: 'landmark', xp, target: a.name });
     }
@@ -270,26 +261,11 @@ export class Game {
 
   /* ---------------- stamps ---------------- */
 
-  private async heatPct(stationId: string, t: number): Promise<number> {
-    if (t - this.heat.at > 60_000) {
-      const rows = await this.db.all<{ station_id: string; created_at: number }>('SELECT station_id, created_at FROM stamps WHERE created_at > ?', [t - 90 * 60_000]);
-      const h = new Map<string, number>();
-      for (const r of rows) h.set(r.station_id, (h.get(r.station_id) ?? 0) + Math.exp(-(t - r.created_at) / (20 * 60_000)));
-      const sorted = [...h.values()].sort((a, b) => a - b);
-      const total = this.stations.size;
-      const cold = total - sorted.length; // stations with zero heat
-      const pct = new Map<string, number>();
-      for (const [k, v] of h) pct.set(k, (cold + sorted.findIndex((s) => s >= v)) / total);
-      this.heat = { at: t, pct };
-    }
-    return this.heat.pct.get(stationId) ?? 0;
-  }
-
   async beaconToken(stationId: string): Promise<string> {
     return `${stationId}.${await this.signer.mac(`b:${stationId}`, 12)}`;
   }
 
-  /** Rotating host code for one time window: a URL token and six digits for typing. */
+  /** The exhibitor's live booth QR for one time window: a URL token and six digits for typing. */
   async hostCode(stationId: string, window: number): Promise<{ token: string; digits: string }> {
     const mac = await this.signer.mac(`h:${stationId}:${window}`, 16);
     let n = 0;
@@ -309,24 +285,24 @@ export class Game {
 
   async stamp(id: string, req: StampRequest): Promise<XpEvent[]> {
     const station = this.stations.get(req.stationId);
-    if (!station) throw new GameError('no_station', 'Unknown station');
+    if (!station) throw new GameError('no_station', 'Unknown booth');
     const t = this.now();
     const p = await this.player(id);
 
     let presence: Presence2;
     if (req.proof === 'beacon') {
-      if (req.beacon !== (await this.beaconToken(station.id))) throw new GameError('bad_beacon', 'That beacon code is not valid');
+      if (req.beacon !== (await this.beaconToken(station.id))) throw new GameError('bad_beacon', 'That is not a Mission X booth QR');
       // A printed code can be photographed and passed around, so it only counts as being there with a good venue check.
       presence = ((await this.hooks.isOnsite?.(id, t)) ?? false) ? 'onsite' : 'remote';
     } else if (req.proof === 'host') {
       const claim = await this.db.get<{ owner_id: string; status: string }>('SELECT owner_id, status FROM stations WHERE station_id = ?', [station.id]);
-      if (!claim || claim.status === 'revoked') throw new GameError('not_hosted', 'This station has no host yet');
-      if (claim.owner_id === id) throw new GameError('own_station', 'You host this station — the code is for your visitors');
-      if (!(await this.hostCodeValid(station.id, req.code, t))) throw new GameError('bad_code', 'That code has expired — ask the host for the current one');
+      if (!claim || claim.status === 'revoked') throw new GameError('not_hosted', 'This booth is not online yet');
+      if (claim.owner_id === id) throw new GameError('own_station', 'This is your own booth — the QR is for your visitors');
+      if (!(await this.hostCodeValid(station.id, req.code, t))) throw new GameError('bad_code', 'That code has expired — scan the booth QR again');
       presence = 'onsite';
     } else if (req.proof === 'virtual') {
       const pos = await this.presence.position(id, t);
-      if (!pos || Math.hypot(pos.x - station.x, pos.y - station.y) > STAMP_RADIUS_M) throw new GameError('too_far', 'Walk up to the station first');
+      if (!pos || Math.hypot(pos.x - station.x, pos.y - station.y) > STAMP_RADIUS_M) throw new GameError('too_far', 'Walk up to the booth first');
       presence = 'remote';
     } else {
       throw new GameError('bad_proof', 'Unknown proof');
@@ -334,44 +310,38 @@ export class Game {
 
     const events: XpEvent[] = [];
     const stmts: Stmt[] = [];
-    const label = station.name || `Station ${station.id}`;
+    const label = station.name || `Booth ${station.id}`;
     const geofence = presence === 'onsite' ? (((await this.hooks.isOnsite?.(id, t)) ?? false) ? 'ok' : 'unchecked') : undefined;
     let newVerified = false;
     const already = !!(await this.db.get('SELECT 1 AS x FROM stamps WHERE player_id = ? AND station_id = ?', [id, station.id]));
 
-    if (already && req.proof !== 'host') throw new GameError('dup', 'You already hold this stamp');
+    if (already && req.proof !== 'host') throw new GameError('dup', 'You already have this stamp');
     if (!already) {
       const last = await this.db.get<{ t: number | null }>('SELECT MAX(created_at) AS t FROM stamps WHERE player_id = ?', [id]);
       const wait = (last?.t ?? 0) + STAMP_MIN_INTERVAL_MS - t;
-      if (wait > 0) throw new GameError('cooldown', `Scanner recharging — ${Math.ceil(wait / 1000)} s`, 429);
+      if (wait > 0) throw new GameError('cooldown', `One moment — ${Math.ceil(wait / 1000)} s`, 429);
 
-      const [inHall, today, heatPct] = await Promise.all([
-        this.db.get<{ n: number }>('SELECT COUNT(*) AS n FROM stamps WHERE player_id = ? AND hall = ?', [id, station.hall]),
-        this.db.get<{ n: number }>('SELECT COUNT(*) AS n FROM stamps WHERE player_id = ? AND created_at >= ?', [id, dayStart(t)]),
-        this.heatPct(station.id, t),
-      ]);
       const storm = (await this.hooks.stampMult?.(station.id, t)) ?? 1;
-      const xp = Math.round(stampXp({ presence, proof: req.proof, stampsInHall: inHall?.n ?? 0, heatPct, stampsToday: today?.n ?? 0 }) * storm);
-      const detail = { presence, proof: req.proof, heatPct: +heatPct.toFixed(3), inHall: inHall?.n ?? 0, geofence, storm: storm > 1 ? storm : undefined };
+      const xp = stampPoints(presence) * storm;
+      const detail = { presence, proof: req.proof, geofence, storm: storm > 1 ? storm : undefined };
       stmts.push(
         ['INSERT INTO stamps (player_id, station_id, hall, proof, created_at) VALUES (?,?,?,?,?)', [id, station.id, station.hall, req.proof, t]],
         ...this.award(id, 'stamp', xp, station.id, detail, t),
         ...this.influence(id, p.cls, station.hall, INFLUENCE.stamp * INFLUENCE_PRESENCE[presence], t),
       );
-      events.push({ action: 'stamp', xp, target: label, note: storm > 1 ? 'Signal Storm ×' + storm : presence === 'remote' && req.proof === 'beacon' ? 'Check in at the venue for full on-site XP' : undefined });
+      events.push({ action: presence === 'onsite' ? 'scan' : 'stamp', xp, target: label, note: storm > 1 ? 'Signal Storm ×' + storm : presence === 'remote' && req.proof === 'beacon' ? `Allow location while you are at MIHAS and a booth QR scores ${POINTS.scan}` : undefined });
     }
 
-    // Scanning the host's live code proves a real conversation: a Verified Contact, once per station.
+    // Scanning the exhibitor's live QR proves a real visit: "met in person", once per booth. It marks the lead for the exhibitor; the points are in the scan.
     if (req.proof === 'host') {
       const had = await this.db.get('SELECT 1 AS x FROM verified_contacts WHERE player_id = ? AND station_id = ?', [id, station.id]);
-      if (had && already) throw new GameError('dup', 'Already verified with this station');
+      if (had && already) throw new GameError('dup', 'You have already scanned this booth');
       if (!had) {
         stmts.push(
           ['INSERT INTO verified_contacts (player_id, station_id, created_at) VALUES (?,?,?)', [id, station.id, t]],
-          ...this.award(id, 'verified_contact', BASE_XP.verified_contact, station.id, null, t),
           ...this.influence(id, p.cls, station.hall, INFLUENCE.verified_contact, t),
         );
-        events.push({ action: 'verified_contact', xp: BASE_XP.verified_contact, target: label });
+        events.push({ action: 'verified_contact', xp: 0, target: label });
         newVerified = true;
       }
     }
@@ -391,7 +361,7 @@ export class Game {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) throw new GameError('email', 'That email does not look right');
     if (!/^\+?\d{8,15}$/.test(phone)) throw new GameError('phone', 'Enter a phone number with 8–15 digits');
     if (input.consentNotice !== true) throw new GameError('consent', 'Please accept the privacy notice to continue');
-    if (await this.passportOf(id)) throw new GameError('dup', 'Your Passport is already issued');
+    if (await this.passportOf(id)) throw new GameError('dup', 'You already have your card');
 
     const t = this.now();
     const base = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 28) || 'crew';
@@ -400,18 +370,22 @@ export class Game {
       ['INSERT INTO passports (player_id, slug, name, company, role, phone, email, show_contact, consent_notice, consent_marketing, consent_at, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
         [id, slug, name, company, role, phone, email, input.showContact ? 1 : 0, 1, input.consentMarketing ? 1 : 0, t, t]],
       ['INSERT INTO tickets (id, player_id, code, created_at) VALUES (?,?,?,?)', [crypto.randomUUID(), id, shortCode(6), t]],
-      ...this.award(id, 'passport', BASE_XP.passport, slug, null, t),
+      ...this.award(id, 'passport', POINTS.card, slug, null, t),
     ]);
-    return [{ action: 'passport', xp: BASE_XP.passport }];
+    if (NAME_ON_BOARD) { // from now on they are a person, not a number: "Aisyah R."
+      const parts = name.split(/\s+/).filter(Boolean), last = parts.length > 1 ? ` ${parts[parts.length - 1]![0]!.toUpperCase()}.` : '';
+      await this.rename(id, `${parts[0]!.slice(0, 16)}${last}`, false);
+      this.avatarCode.delete(id);
+    }
+    return [{ action: 'passport', xp: POINTS.card }];
   }
 
-  async publicPassport(slug: string): Promise<(PassportRow & { callsign: string; rank: string }) | null> {
+  async publicPassport(slug: string): Promise<(PassportRow & { callsign: string }) | null> {
     const row = await this.db.get<PassportRow & { callsign: string; xp: number; docked_at: number | null }>(
       'SELECT p.slug, p.name, p.company, p.role, p.phone, p.email, p.show_contact, pl.callsign, pl.xp, pl.docked_at FROM passports p JOIN players pl ON pl.id = p.player_id WHERE p.slug = ?', [slug]);
     if (!row) return null;
-    const rank = rankFor(row.xp, { passport: true, docked: row.docked_at != null }).rank.label;
     const show = row.show_contact === 1;
-    return { ...row, phone: show ? row.phone : '', email: show ? row.email : '', rank };
+    return { ...row, phone: show ? row.phone : '', email: show ? row.email : '' };
   }
 
   /* ---------------- crew (staff) ---------------- */
@@ -424,8 +398,8 @@ export class Game {
     } else if (/^[A-Z2-9]{6}$/.test(tokenOrCode.toUpperCase())) {
       row = await this.db.get('SELECT id, player_id, created_at, redeemed_at FROM tickets WHERE code = ?', [tokenOrCode.toUpperCase()]);
     }
-    if (!row) throw new GameError('no_ticket', 'Ticket not recognised', 404);
-    if (this.now() - row.created_at > GOLDEN_TICKET_TTL_MS) throw new GameError('expired', 'This ticket has expired');
+    if (!row) throw new GameError('no_ticket', 'Prize code not recognised', 404);
+    if (this.now() - row.created_at > PRIZE_CODE_TTL_MS) throw new GameError('expired', 'This prize code has expired');
     return row;
   }
 
@@ -433,19 +407,19 @@ export class Game {
     const tk = await this.resolveTicket(tokenOrCode);
     const v = await this.db.get<{ callsign: string; name: string; company: string; role: string }>(
       'SELECT pl.callsign, p.name, p.company, p.role FROM players pl JOIN passports p ON p.player_id = pl.id WHERE pl.id = ?', [tk.player_id]);
-    if (!v) throw new GameError('no_passport', 'No Passport on this ticket', 404);
+    if (!v) throw new GameError('no_passport', 'No card behind this prize code', 404);
     return { ...v, alreadyDocked: tk.redeemed_at != null };
   }
 
   async crewDock(tokenOrCode: string): Promise<CrewTicketView> {
     const tk = await this.resolveTicket(tokenOrCode);
     const view = await this.crewTicket(tokenOrCode);
-    if (tk.redeemed_at != null) throw new GameError('used', 'This ticket was already scanned', 409);
+    if (tk.redeemed_at != null) throw new GameError('used', 'This prize code was already used', 409);
     const t = this.now();
     await this.db.batch([
       ['UPDATE tickets SET redeemed_at = ? WHERE id = ? AND redeemed_at IS NULL', [t, tk.id]],
       ['UPDATE players SET docked_at = ? WHERE id = ?', [t, tk.player_id]],
-      ...this.award(tk.player_id, 'dock', BASE_XP.dock, this.level.hero.id, { proof: 'staff_scan' }, t),
+      ...this.award(tk.player_id, 'dock', POINTS.booth, this.level.hero.id, { proof: 'staff_scan' }, t),
     ]);
     return { ...view, alreadyDocked: true };
   }
@@ -462,17 +436,7 @@ export class Game {
        FROM passports p JOIN players pl ON pl.id = p.player_id ORDER BY p.created_at DESC LIMIT 5000`);
   }
 
-  /* ---------------- boards + analytics ---------------- */
-
-  async leaderboard(id: string | null): Promise<LeaderRow[]> {
-    const rows = await this.db.all<PlayerRow & { has_pass: number }>(
-      `SELECT pl.id, pl.callsign, pl.cls, pl.xp, pl.docked_at, EXISTS(SELECT 1 FROM passports p WHERE p.player_id = pl.id) AS has_pass
-       FROM players pl WHERE pl.xp > 0 ORDER BY pl.xp DESC, pl.created_at ASC LIMIT 25`);
-    return rows.map((r) => ({
-      callsign: r.callsign, cls: r.cls as PlayerClass | null, xp: r.xp, docked: r.docked_at != null,
-      rank: rankFor(r.xp, { passport: r.has_pass === 1, docked: r.docked_at != null }).rank.label, you: r.id === id || undefined,
-    }));
-  }
+  /* ---------------- analytics ---------------- */
 
   async track(id: string | null, name: string, props: unknown): Promise<void> {
     if (!/^[a-z0-9_]{2,40}$/.test(name)) return;

@@ -18,6 +18,9 @@ const TRAIL_STEP = 1.6, TRAIL_MAX = 220;
 
 interface Holo { a: Astronaut; av: string; deck: boolean; x: number; y: number; tx: number; ty: number; h: number; label: HTMLDivElement; seen: number }
 
+/** Switched off with the rest of the presence engine: a real-booth scan places the astronaut, it does not lock it. */
+const FOLLOW_REAL_STEPS = false;
+
 export function pickQuality(): Quality {
   const mem = (navigator as { deviceMemory?: number }).deviceMemory ?? 8;
   return /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) || mem <= 4 ? 'low' : 'high';
@@ -82,7 +85,7 @@ export class Engine {
 
     const ro = new ResizeObserver(() => this.resize()); ro.observe(host); this.stops.push(() => ro.disconnect()); this.resize();
     const canvas = this.renderer.domElement;
-    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); this.running = false; toast('Graphics paused', 'Reloading the station…', 'warn', 6000); setTimeout(() => location.reload(), 1500); });
+    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); this.running = false; toast('Graphics paused', 'Reloading…', 'warn', 6000); setTimeout(() => location.reload(), 1500); });
     this.stops.push(effect(() => this.world.setStamped(stampedSet.value)));
     this.stops.push(effect(() => this.world.setStations(stations.value)));
     this.stops.push(effect(() => { if (sectors.value) this.world.setSectors(sectors.value.sectors); }));
@@ -90,7 +93,7 @@ export class Engine {
     this.stops.push(effect(() => this.world.setStorm(missions.value?.storm ?? null)));
     this.stops.push(effect(() => this.world.setGc(gcView.value)));
     // an on-site scan is the server saying "this person really stood here": put the avatar on deck at that station
-    this.stops.push(effect(() => { const a = me.value?.anchor; if (a && this.player && a.at > this.walk.anchorSeen) this.enterDeck(a.stationId, a.at); }));
+    this.stops.push(effect(() => { const a = me.value?.anchor; if (a && this.player && a.at > this.walk.anchorSeen) this.arriveAt(a.stationId, a.at); }));
 
     // idle orbit behind the suit-up screen
     this.camTarget.copy(this.world.heroPos); this.cam.yaw = 0.6; this.loop(true);
@@ -109,11 +112,20 @@ export class Engine {
     this.player = new Astronaut({ spec: me.value?.avatar ?? defaultAvatar(me.value?.cls ?? null) }); this.player.group.scale.setScalar(1.25); this.world.scene.add(this.player.group);
     this.cam.yaw = spawn === 'short' ? 0 : Math.PI / 2; this.cam.dist = 150; this.cam.want = 30;
     this.firstPing = true; this.pingAt = 0; this.trailAt = 0;
-    const a = me.value?.anchor; // came back to the game shortly after a scan: still on deck
-    if (a && Date.now() - a.at < DECK_STALE_MS) this.enterDeck(a.stationId, a.at); else if (a) this.walk.anchorSeen = a.at;
+    const a = me.value?.anchor; // came back to the game shortly after a scan at a real booth: stand there
+    if (a && Date.now() - a.at < DECK_STALE_MS) this.arriveAt(a.stationId, a.at); else if (a) this.walk.anchorSeen = a.at;
   }
 
   /* ---------------- on deck: the avatar is where the person is ---------------- */
+
+  /** A scan at a real booth: the astronaut appears where the person stands, and stays free to walk on.
+   *  ("On deck" — the avatar locked to the person's real steps — belongs to the switched-off systems.) */
+  private arriveAt(stationId: string, at: number) {
+    if (FOLLOW_REAL_STEPS) { this.enterDeck(stationId, at); return; }
+    const b = this.level.booths.find((x) => x.id === stationId); this.walk.anchorSeen = at; if (!b) return;
+    this.pos = this.nav.nearestWalkable(b.x, b.y) ?? { x: b.x, y: b.y }; this.route = []; this.firstPing = true; this.pingAt = 0; this.trailAt = 0;
+    this.camTarget.copy(toWorld(this.pos.x, this.pos.y, 1.2));
+  }
 
   private enterDeck(stationId: string, at: number) {
     const b = this.level.booths.find((x) => x.id === stationId); if (!b) return;
@@ -164,7 +176,7 @@ export class Engine {
     const d = deck.value; if (!d.on) return;
     const stale = d.sigma > DECK_STALE_SIGMA_M || (!d.tracking && Date.now() - d.since > DECK_STALE_MS);
     if (stale) this.leaveDeck('Scan any station to put your astronaut back where you are');
-    else if (d.sigma > DECK_STALE_SIGMA_M * 0.7 && now - this.walk.warned > 60_000) { this.walk.warned = now; toast('Position getting fuzzy', 'Scan a station to re-anchor', 'info', 4000); }
+    else if (d.sigma > DECK_STALE_SIGMA_M * 0.7 && now - this.walk.warned > 60_000) { this.walk.warned = now; toast('Position getting fuzzy', 'Scan a booth QR to place yourself again', 'info', 4000); }
   }
 
   private loop(first = false) {
@@ -241,7 +253,7 @@ export class Engine {
 
   /** Ride a lift: the same shaft on another deck. A lift ride is the one jump the server accepts away from a spawn point. */
   useLift(to: Lift) {
-    if (deck.value.on) { toast('You are on deck', 'Your astronaut follows the real you — scan a station on the other level', 'info', 4000); return; }
+    if (deck.value.on) { toast('You are on deck', 'Your astronaut follows the real you — scan a booth QR on the other level', 'info', 4000); return; }
     this.pos = this.nav.nearestWalkable(to.x, to.y + 1.5) ?? { x: to.x, y: to.y }; this.route = []; this.heading = Math.PI;
     this.firstPing = true; this.pingAt = 0; this.trailAt = 0; this.cam.dist = 120;
     this.camTarget.copy(toWorld(this.pos.x, this.pos.y, 1.2));
@@ -291,7 +303,9 @@ export class Engine {
   /* ---------------- guide trail ---------------- */
 
   private updateTrail(now: number, t: number) {
-    if (!guideOn.value) { if (this.trail.count) { this.trail.count = 0; distToGoal.value = null; } return; }
+    // The trail leads to the X until the player has their card; after that only to a place they picked.
+    const wanted = guideOn.value && (guideTarget.value != null || (!me.value?.passport && me.value?.cls !== 'exhibitor'));
+    if (!wanted) { if (this.trail.count) { this.trail.count = 0; distToGoal.value = null; } return; }
     if (now - this.trailAt > 1200) {
       this.trailAt = now; this.trailPath = this.nav.path(this.pos, this.goal) ?? [];
       const d = this.trailPath.length ? Math.round(pathLength(this.trailPath)) : null;

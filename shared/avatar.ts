@@ -1,6 +1,7 @@
-// Avatar catalog (Systems doc §2.1). Shared: the client renders from it, the server validates against it.
+// What the astronaut wears. The simple game has one suit per role (defaultAvatar); the editor behind this catalog is
+// switched off (FEATURES.avatars). Shared: the client renders from it, the server validates against it.
 // A spec is nine small integers, sent over presence as "h.v.s.e.t.b.sh.c.tr".
-import { RANKS, type PlayerClass } from './rules.js';
+import type { Role } from './rules.js';
 
 export interface AvatarSpec { helmet: number; visor: number; smile: number; ear: number; top: number; bottom: number; shoes: number; carry: number; trail: number }
 export const SLOTS = ['helmet', 'visor', 'smile', 'ear', 'top', 'bottom', 'shoes', 'carry', 'trail'] as const;
@@ -49,36 +50,25 @@ export const CATALOG = {
 
 export const SLOT_LABEL: Record<Slot, string> = { helmet: 'Helmet', visor: 'Visor', smile: 'LED smile', ear: 'Ear ring', top: 'Top', bottom: 'Bottoms', shoes: 'Shoes', carry: 'Carry', trail: 'Trail' };
 
-/** The four crew members from the backdrop, as starting looks. */
-export function defaultAvatar(cls: PlayerClass | null): AvatarSpec {
-  const base: AvatarSpec = { helmet: 0, visor: 0, smile: 0, ear: 0, top: 0, bottom: 0, shoes: 0, carry: 0, trail: 0 };
-  if (cls === 'builder') return { ...base, top: 0, carry: 1 };
-  if (cls === 'strategist') return { ...base, top: 1, bottom: 1 };
-  if (cls === 'closer') return { ...base, top: 2, carry: 3 };
-  if (cls === 'creator') return { ...base, top: 3, bottom: 2, carry: 2 };
-  return base;
+/** One astronaut, two suits: visitors in the hoodie with a cyan ear ring, exhibitors in the blazer with a yellow one and a tablet. */
+export function defaultAvatar(role: Role | null): AvatarSpec {
+  const base: AvatarSpec = { helmet: 0, visor: 0, smile: 0, ear: 1, top: 0, bottom: 0, shoes: 0, carry: 0, trail: 0 };
+  return role === 'exhibitor' ? { ...base, ear: 0, top: 4, carry: 4 } : base;
 }
 
-export function isUnlocked(o: Option, rankIndex: number): boolean {
-  const u = o.unlock;
-  if (!u) return true;
-  return 'rank' in u ? rankIndex >= u.rank : false;
-}
-export function unlockHint(o: Option): string {
-  const u = o.unlock;
-  if (!u) return '';
-  return 'rank' in u ? `Reach ${RANKS[u.rank]!.label}` : u.later === 'constellation' ? 'Constellation reward' : 'Mission reward';
-}
+/** Options with an unlock were rewards of systems that are switched off; they stay locked. */
+export const isUnlocked = (o: Option): boolean => !o.unlock;
+export const unlockHint = (o: Option): string => (o.unlock ? 'Not available' : '');
 
-/** Returns a clean spec, or null if any value is out of range or still locked for this rank. */
-export function validateAvatar(input: unknown, rankIndex: number): AvatarSpec | null {
+/** Returns a clean spec, or null if any value is out of range or locked. */
+export function validateAvatar(input: unknown): AvatarSpec | null {
   if (!input || typeof input !== 'object') return null;
   const out = {} as AvatarSpec;
   for (const s of SLOTS) {
     const v = (input as Record<string, unknown>)[s];
     if (!Number.isInteger(v)) return null;
     const opt = (CATALOG[s] as Option[])[v as number];
-    if (!opt || !isUnlocked(opt, rankIndex)) return null;
+    if (!opt || !isUnlocked(opt)) return null;
     out[s] = v as number;
   }
   return out;

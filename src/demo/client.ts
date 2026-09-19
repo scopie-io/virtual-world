@@ -34,7 +34,7 @@ export async function ensureBackend(status?: (text: string) => void): Promise<'l
   }
 
   if (!('serviceWorker' in navigator)) throw new Error('This demo runs its server inside your browser, which this window does not allow. Open it in a normal (not private) Chrome, Edge, Safari or Firefox window.');
-  status?.('Starting the demo station…');
+  status?.('Starting the demo…');
   const reg = await navigator.serviceWorker.register('/demo-sw.js');
   await navigator.serviceWorker.ready;
   if (!navigator.serviceWorker.controller) { // first visit, or a hard reload: wait for the worker to take this page
@@ -43,7 +43,7 @@ export async function ensureBackend(status?: (text: string) => void): Promise<'l
   }
   // A newer worker (after a redeploy) takes over mid-visit and may have rebuilt the world: start this page again on top of it.
   navigator.serviceWorker.addEventListener('controllerchange', reloadOnce);
-  status?.('Building the demo world — exhibitors, visitors, a few hours of history…');
+  status?.('Building the demo floor — exhibitors, visitors, a few hours of history…');
   const r = await fetch('/api/demo/state'), j = (await r.json().catch(() => null)) as { ok: boolean; data: DemoState | null; error?: string } | null;
   if (!j?.ok) throw new Error(j?.error ?? 'The demo backend did not start. Reload the page to try again.');
   if (j.data?.version !== DEMO_VERSION) { // this page is newer than the worker that answered: fetch the new one, which reloads us when it takes over
@@ -67,6 +67,5 @@ export const demoApi = {
   partnerScan: () => post<{ callsign: string } | null>('/api/demo/partner-scan'),
   visitor: () => post<{ station: string; name: string } | null>('/api/demo/visitor'),
   dock: () => post<boolean>('/api/demo/dock'),
-  boost: () => post<null>('/api/demo/boost'),
   reset: async () => { await post<null>('/api/demo/reset'); try { localStorage.removeItem('mx_axis'); } catch { /* ignore */ } location.href = location.pathname; },
 };

@@ -1,42 +1,47 @@
 import { signal, computed } from '@preact/signals';
-import type { Booth, GcView, LeaderRow, LevelData, Lift, Me, MissionsView, SectorsView, StationView, XpEvent } from '../shared/types';
+import type { Booth, DailyDrop, GcView, HostStation, LevelData, Lift, Me, MissionsView, SectorsView, StationView, XpEvent } from '../shared/types';
+import { boothSteps, chapters, type Chapter } from '../shared/rules';
 
-export type Phase = 'boot' | 'suitup' | 'play' | 'error';
-export type Modal = null | 'passport' | 'ticket' | 'board' | 'docked' | 'station' | 'claim' | 'host' | 'link' | 'contacts' | 'suit' | 'find' | 'crews' | 'menu' | 'missions' | 'gc' | 'presence' | 'team' | 'tour';
+export type Phase = 'boot' | 'start' | 'play' | 'error';
+export type Modal = null | 'card' | 'prize' | 'claimed' | 'complete' | 'board' | 'booth' | 'claim' | 'mybooth' | 'swap' | 'contacts' | 'find' | 'menu' | 'rules' | 'tour';
 
 export const phase = signal<Phase>('boot');
 export const level = signal<LevelData | null>(null);
 export const bootError = signal('');
 /** What the splash says while the page starts. */
-export const bootNote = signal('Docking with the station…');
+export const bootNote = signal('Opening MIHAS…');
 export const me = signal<Me | null>(null);
 export const modal = signal<Modal>(null);
 export const nearStation = signal<Booth | null>(null);
-/** The station the Station / Claim sheets are about (set when they open, so walking away does not change it). */
+/** The booth the Booth / Claim sheets are about (set when they open, so walking away does not change it). */
 export const panelStation = signal<Booth | null>(null);
 export const atLaunchPad = signal(false);
-/** Standing on a lift: the same shaft on the other decks. */
+/** Standing on a lift: the same shaft on the other levels. */
 export const nearLift = signal<{ here: Lift; others: Lift[] } | null>(null);
-/** The goal is on another deck, so the trail leads to a lift first: "Take the lift to Level 1". */
+/** The goal is on another level, so the trail leads to a lift first: "Take the lift to Level 1". */
 export const goalVia = signal<string | null>(null);
 export const currentDeck = signal(2);
 export const distToGoal = signal<number | null>(null);
 export const guideOn = signal(true);
-/** Where the trail leads. null = the Launch Pad. */
+/** Where the trail leads. null = the X, until the player has their card; after that, nowhere until they pick a place. */
 export const guideTarget = signal<{ x: number; y: number; label: string } | null>(null);
 export const online = signal(0);
-export const board = signal<LeaderRow[] | null>(null);
+/** Booths that are online (an exhibitor brought them into the game). */
 export const stations = signal<StationView[]>([]);
+/** The booth of the day, when the crew has set one. */
+export const drop = signal<DailyDrop | null>(null);
+/** The exhibitor's own booths, for their three steps. */
+export const myBooths = signal<HostStation[]>([]);
+/** A card-swap code that arrived in the URL (scanned with the phone's own camera). */
+export const pendingLink = signal<string | null>(null);
+
+/* Switched-off systems (FEATURES in shared/rules.ts). Nothing fills these in the simple game; the world renderer still reads them. */
 export const sectors = signal<SectorsView | null>(null);
 export const missions = signal<MissionsView | null>(null);
 export const gcView = signal<GcView | null>(null);
-/** Ground Control: taps on the floor drop a marker for the astronaut instead of moving the avatar. */
 export const gcMarkerMode = signal(false);
-/** On deck = the avatar stands where the person really is (anchored by a scan, optionally following their steps). */
 export interface DeckState { on: boolean; label: string; sigma: number; since: number; tracking: boolean }
 export const deck = signal<DeckState>({ on: false, label: '', sigma: 0, since: 0, tracking: false });
-/** A Link code that arrived in the URL (scanned with the phone's own camera). */
-export const pendingLink = signal<string | null>(null);
 
 export interface Toast { id: number; title: string; sub?: string; tone: 'xp' | 'info' | 'warn' }
 export const toasts = signal<Toast[]>([]);
@@ -48,24 +53,28 @@ export function toast(title: string, sub?: string, tone: Toast['tone'] = 'info',
 }
 
 const ACTION_LABEL: Record<string, string> = {
-  suit_up: 'Suited up', passport: 'Passport issued', dock: 'Docked at the Launch Pad', stamp: 'Stamped', hall_first: 'New sector', landmark: 'Landmark',
-  verified_contact: 'Verified contact', share_station: 'Passport shared', link: 'Linked', sector_held: 'Your crew holds the sector', station_claim: 'Station online',
-  walk: 'Walking the deck', mission: 'Mission complete', ground_control: 'Ground Control run', daily_drop: 'Daily Drop', demo_boost: 'Demo boost',
+  passport: 'Your card is ready', dock: 'Claimed at Booth 8H18B', stamp: 'Stamped', scan: 'Scanned at the real booth', verified_contact: 'Met in person',
+  share_station: 'Card left', link: 'Cards swapped', station_claim: 'Your booth is online', daily_drop: 'Booth of the day',
 };
 export function showEvents(events: XpEvent[] | undefined) {
   for (const e of events ?? []) {
-    if (e.xp > 0) toast(`+${e.xp} XP`, [ACTION_LABEL[e.action] ?? e.action, e.target, e.note].filter(Boolean).join(' · '), 'xp', e.note ? 5200 : 3200);
-    else if (e.target) toast(e.target); // a mission step: progress, no XP yet
+    const label = ACTION_LABEL[e.action] ?? e.action;
+    if (e.xp > 0) toast(`+${e.xp} points`, [label, e.target, e.note].filter(Boolean).join(' · '), 'xp', e.note ? 5200 : 3200);
+    else toast(label, e.target);
   }
 }
 
 export const stampedSet = computed(() => new Set(me.value?.stamps ?? []));
 export const stationMap = computed(() => new Map(stations.value.map((s) => [s.id, s])));
-export const mission = computed(() => {
+
+/** The journey. Visitors: five chapters. Exhibitors: three steps on their own booth. `now` is the one thing to do next. */
+export interface Journey { kind: 'visitor' | 'exhibitor'; steps: Chapter[]; now: Chapter | null; done: number }
+export const journey = computed<Journey | null>(() => {
   const m = me.value;
   if (!m) return null;
-  if (!m.passport) return { k: 'Mission 01', title: 'Find the X.', body: 'Follow the trail to the Launch Pad — Booth 8H18B, Hall 8 — and claim your Passport.' };
-  if (!m.docked) return { k: 'Mission 02', title: 'Make it real.', body: 'Bring your Golden Ticket to the real Booth 8H18B. Crew scans it: +500 XP and your rank unlocks.' };
-  if (m.links === 0) return { k: 'Mission 03', title: 'Shake hands.', body: 'Open Link and swap Passports with someone you meet. +50 XP each — and a real contact in your log.' };
-  return { k: 'Free flight', title: 'Chart the station.', body: 'Stamp stations, scan host codes, win sectors for your crew. Quiet corners pay more.' };
+  const exhibitor = m.cls === 'exhibitor', b = myBooths.value[0];
+  const steps = exhibitor
+    ? boothSteps({ online: m.hosting.length > 0, visits: b?.stamps ?? 0, leads: b?.shares ?? 0 })
+    : chapters({ started: !!m.cls, card: !!m.passport, stamps: m.stamps.length, swaps: m.links, cardsLeft: m.shared.length, claimed: m.docked });
+  return { kind: exhibitor ? 'exhibitor' : 'visitor', steps, now: steps.find((s) => !s.done) ?? null, done: steps.filter((s) => s.done).length };
 });

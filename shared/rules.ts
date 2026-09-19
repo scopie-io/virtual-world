@@ -1,151 +1,141 @@
-// Game rules shared by server (authoritative) and client (display only).
-// Source: MISSION_X_Game_Systems.md §5 and §7. Change numbers here, nowhere else.
+// The rules of Mission X, shared by the server (which decides) and the client (which displays).
+// The whole game for a player: docs/game-rules.md. Change numbers here, nowhere else.
 
-export const CLASSES = ['builder', 'strategist', 'closer', 'creator'] as const;
-export type PlayerClass = (typeof CLASSES)[number];
+/* ---------------- who plays ---------------- */
 
-export const CLASS_INFO: Record<PlayerClass, { label: string; line: string; jacket: number; pants: number }> = {
-  builder: { label: 'The Builder', line: 'Websites, stores, landing pages', jacket: 0xd5d9de, pants: 0x1f3558 },
-  strategist: { label: 'The Strategist', line: 'Brand and direction', jacket: 0x22395c, pants: 0xc9a27a },
-  closer: { label: 'The Closer', line: 'Funnels, sales, payments', jacket: 0xc9a27a, pants: 0x1f3558 },
-  creator: { label: 'The Creator', line: 'Content, social, video', jacket: 0x1b1b1f, pants: 0x1b1b1f },
+export const ROLES = ['visitor', 'exhibitor'] as const;
+export type Role = (typeof ROLES)[number];
+/** One astronaut, two colours: visitors wear the brand cyan, exhibitors the brand yellow. */
+export const ROLE_INFO: Record<Role, { label: string; plural: string; color: number }> = {
+  visitor: { label: 'Visitor', plural: 'Visitors', color: 0x6fe3ff },
+  exhibitor: { label: 'Exhibitor', plural: 'Exhibitors', color: 0xffc629 },
 };
 
-export type Action =
-  | 'suit_up'
-  | 'passport'
-  | 'dock'
-  | 'stamp'
-  | 'hall_first'
-  | 'landmark'
-  | 'verified_contact'
-  | 'share_station'
-  | 'link'
-  | 'sector_held'
-  | 'station_claim';
+/* ---------------- points: fixed, and printed on the rules card ---------------- */
 
-export const BASE_XP: Record<Action, number> = {
-  suit_up: 50,
-  passport: 200,
-  dock: 500,
-  stamp: 40,
-  hall_first: 100,
-  landmark: 20,
-  verified_contact: 60,
-  share_station: 25,
-  link: 50,
-  sector_held: 40,
-  station_claim: 100,
-};
+export const POINTS = {
+  /** walk up to a booth in the game and stamp it */
+  stamp: 10,
+  /** scan the booth's QR at the real booth */
+  scan: 50,
+  /** leave your card with an exhibitor */
+  leaveCard: 10,
+  /** swap cards with a person you met */
+  swap: 50,
+  /** get your digital business card at the X */
+  card: 200,
+  /** show your prize code at the real Booth 8H18B */
+  booth: 500,
+  /** bring your own booth online (exhibitors) */
+  boothOnline: 100,
+} as const;
 
-export type Presence = 'remote' | 'onsite';
-export const PRESENCE_MULT: Record<Presence, number> = { remote: 0.15, onsite: 1.0 };
-
-/** How the stamp was proven. virtual = walked the avatar up; beacon = printed QR; host = the exhibitor's rotating code (best). */
+/** How a stamp was proven. virtual = walked the astronaut up; beacon = the booth's printed QR; host = the exhibitor's live QR. */
 export type StampProof = 'virtual' | 'beacon' | 'host';
-export const TRUST_MULT: Record<StampProof, number> = { virtual: 1.0, beacon: 0.6, host: 1.0 };
+/** remote = played from anywhere; onsite = proven to be at the booth. */
+export type Presence = 'remote' | 'onsite';
+export const stampPoints = (presence: Presence) => (presence === 'onsite' ? POINTS.scan : POINTS.stamp);
 
-export const STAMP_MIN_INTERVAL_MS = 45_000;
-export const STAMP_DAILY_FULL = 60;
-export const STAMP_OVERFLOW_MULT = 0.25;
-/** A virtual stamp needs the avatar this close to the booth centre (metres). */
+/* ---------------- the mission: one journey, five chapters ---------------- */
+
+export const MISSION_STAMPS = 5;
+export interface MissionFacts { started: boolean; card: boolean; stamps: number; swaps: number; cardsLeft: number; claimed: boolean }
+export interface Chapter { n: number; title: string; todo: string; done: boolean }
+/** Chapters 3 and 4 can be finished in either order, and someone standing at the booth may finish 5 early. */
+export function chapters(f: MissionFacts): Chapter[] {
+  return [
+    { n: 1, title: 'Arrive', todo: 'Land at MIHAS and take your first steps.', done: f.started },
+    { n: 2, title: 'Find the X', todo: 'Follow the trail to Booth 8H18B and get your free digital business card.', done: f.card },
+    { n: 3, title: 'Collect', todo: `Visit ${MISSION_STAMPS} booths. Walk up to each one and stamp it.`, done: f.stamps >= MISSION_STAMPS },
+    { n: 4, title: 'Connect', todo: 'Swap cards with one person, or leave your card at one booth.', done: f.swaps + f.cardsLeft >= 1 },
+    { n: 5, title: 'Make it real', todo: 'Show your prize code at the real Booth 8H18B, Hall 8.', done: f.claimed },
+  ];
+}
+
+/** The exhibitor's journey is three steps on their own booth. */
+export interface BoothFacts { online: boolean; visits: number; leads: number }
+export function boothSteps(f: BoothFacts): Chapter[] {
+  return [
+    { n: 1, title: 'Light up', todo: 'Find your booth number and bring it online.', done: f.online },
+    { n: 2, title: 'Get scanned', todo: 'Show your booth QR at the counter. Visitors scan it.', done: f.visits >= 1 },
+    { n: 3, title: 'Lead', todo: 'Visitors leave their cards. Your list grows; export it any time.', done: f.leads >= 1 },
+  ];
+}
+
+/* ---------------- limits that keep play honest (players never need to read these) ---------------- */
+
+export const STAMP_MIN_INTERVAL_MS = 5_000;
+/** A virtual stamp needs the astronaut this close to the booth centre (metres). */
 export const STAMP_RADIUS_M = 5.0;
-/** Fastest plausible avatar travel between two server-seen positions (m/s). Run speed is 7. */
+/** Fastest plausible travel between two positions the server saw (m/s). Run speed is 7. */
 export const MAX_SPEED_MPS = 12;
+/** Long enough for someone who plays a fortnight before the show to still claim at the booth. */
+export const PRIZE_CODE_TTL_MS = 21 * 24 * 3600 * 1000;
+/** After this many card swaps in a day the rest pay a token amount: a guard against farming, not a rule anyone meets. */
+export const LINK_DAILY_FULL = 30;
+export const LINK_OVERFLOW_XP = 10;
+export const LINK_CODE_TTL_MS = 120_000;
 
-/** novelty = max(0.4, 1 − 0.06·k), k = stamps already held in that hall. */
-export function noveltyMult(stampsInHall: number): number {
-  return Math.max(0.4, 1 - 0.06 * stampsInHall);
-}
-
-/** quiet = 1 + 0.5·(1 − heatPct): quiet stations pay up to ×1.5. */
-export function quietMult(heatPct: number): number {
-  return 1 + 0.5 * (1 - Math.min(1, Math.max(0, heatPct)));
-}
-
-export function stampXp(o: { presence: Presence; proof: StampProof; stampsInHall: number; heatPct: number; stampsToday: number }): number {
-  const overflow = o.stampsToday >= STAMP_DAILY_FULL ? STAMP_OVERFLOW_MULT : 1;
-  const xp = BASE_XP.stamp * PRESENCE_MULT[o.presence] * TRUST_MULT[o.proof] * noveltyMult(o.stampsInHall) * quietMult(o.heatPct) * overflow;
-  return Math.max(1, Math.round(xp));
-}
-
-export interface RankDef {
-  id: string;
-  label: string;
-  xp: number;
-  /** Gate besides XP, evaluated on the server. */
-  gate?: 'passport' | 'docked';
-}
-
-// M1 ships the first three ranks' gates; Captain+ gates (levels, constellations, links) arrive with those systems.
-export const RANKS: RankDef[] = [
-  { id: 'cadet', label: 'Cadet', xp: 0 },
-  { id: 'navigator', label: 'Navigator', xp: 500, gate: 'passport' },
-  { id: 'pilot', label: 'Pilot', xp: 1500, gate: 'docked' },
-  { id: 'captain', label: 'Captain', xp: 3500, gate: 'docked' },
-  { id: 'commander', label: 'Commander', xp: 7000, gate: 'docked' },
-  { id: 'admiral', label: 'Admiral', xp: 12000, gate: 'docked' },
-];
-
-export function rankFor(xp: number, has: { passport: boolean; docked: boolean }): { rank: RankDef; next: RankDef | null; blockedBy: RankDef['gate'] | null } {
-  let idx = 0;
-  let blockedBy: RankDef['gate'] | null = null;
-  for (let i = 1; i < RANKS.length; i++) {
-    const r = RANKS[i]!;
-    if (xp < r.xp) break;
-    if (r.gate && !has[r.gate]) { blockedBy = r.gate; break; }
-    idx = i;
-  }
-  return { rank: RANKS[idx]!, next: RANKS[idx + 1] ?? null, blockedBy };
-}
-
-/** Signal accrues at 1 per 10 XP. Spending arrives in M2; never purchasable, tradable or wagerable. */
-export const signalFor = (xp: number) => Math.floor(xp / 10);
-
-export const GOLDEN_TICKET_TTL_MS = 5 * 24 * 3600 * 1000;
-
-/* ---------------- M2: hosts, links, crews ---------------- */
-
-/** Rotating host code: a new code every window; older windows stay valid long enough to boot the game from a camera-app scan. */
+/** The exhibitor's live QR: a new code every window; older windows stay valid long enough for a phone's camera app to open the game. */
 export const HOST_WINDOW_MS = 30_000;
 export const HOST_GRACE_WINDOWS = 4;
 export const HOST_ONLINE_MS = 60_000;
 export const MAX_STATIONS_PER_OWNER = 12;
-
-export const LINK_CODE_TTL_MS = 120_000;
-export const LINK_DAILY_FULL = 30;
-export const LINK_OVERFLOW_XP = 10;
 
 /** What a person may choose to share. Name is always part of a share; the rest is per-share consent. */
 export const SHARE_FIELDS = ['name', 'company', 'role', 'phone', 'email'] as const;
 export type ShareField = (typeof SHARE_FIELDS)[number];
 export const DEFAULT_SHARE: ShareField[] = ['name', 'company', 'role'];
 
-export const CREW_INFO: Record<PlayerClass, { crew: string; color: number }> = {
-  builder: { crew: 'Builders', color: 0x6fe3ff },
-  strategist: { crew: 'Strategists', color: 0x4d7cff },
-  closer: { crew: 'Closers', color: 0xffc629 },
-  creator: { crew: 'Creators', color: 0xb69cff },
-};
-export const SECTOR_TICK_MS = 30 * 60_000;
-export const INFLUENCE_TAU_MS = 45 * 60_000;
-export const INFLUENCE = { stamp: 1, verified_contact: 2, link_cross_crew: 1 } as const;
-/** Until the venue geofence lands (M3) a walked-up virtual stamp moves a sector far less than being there. */
-export const INFLUENCE_PRESENCE: Record<Presence, number> = { remote: 0.25, onsite: 1 };
+/** With a card, a player appears as "Aisyah R." above their astronaut and on the board; without one, as "Visitor 4821". */
+export const NAME_ON_BOARD = true;
 
-/** Station Command (Systems doc §11). */
-export const SXP = { claim: 100, profile: 100, stamp: 2, share: 10, verified: 15, hostHour: 20 } as const;
-export const STATION_LEVELS = [0, 100, 300, 800, 2000, 5000];
-export const stationLevel = (sxp: number) => STATION_LEVELS.reduce((lvl, need, i) => (sxp >= need ? i : lvl), 0);
-
-/* ---------------- M3: presence engine, Mission Director, Ground Control ---------------- */
-
-/** MITEC, Jalan Dutamas 2 — 3°10′41″N 101°40′07″E (Wikipedia). Override with VENUE_LAT / VENUE_LON / VENUE_RADIUS_M. */
+/** MITEC, Jalan Dutamas 2 — 3°10′41″N 101°40′07″E. Override with VENUE_LAT / VENUE_LON / VENUE_RADIUS_M. */
 export const VENUE_DEFAULT = { lat: 3.17811, lon: 101.66864, radiusM: 400 };
-/** A venue check stays good this long; so does an on-site scan (you cannot leave MITEC and come back much faster). */
+/** A venue check stays good this long; so does a scan at a real booth. */
 export const ONSITE_TTL_MS = 30 * 60_000;
 /** GPS fixes worse than this cannot place anyone inside or outside a 400 m circle. */
 export const VENUE_MAX_ACCURACY_M = 250;
+
+/** Trust: only used by the crew when a prize hangs on the board. Never shown to players. */
+export const TRUST_W = { geofence: 0.25, hostCode: 0.3, plausible: 0.2, steps: 0.15, human: 0.1 } as const;
+export const TRUST_MIN = 0.7;
+/** Switches the crew can flip from the console without a deploy. */
+export const FLAG_KEYS = ['registration', 'claims', 'links', 'holograms'] as const;
+
+/** How busy a booth's own board entry is: visits and cards, nothing else. */
+export const SXP = { claim: 0, profile: 0, stamp: 1, share: 3, verified: 2, hostHour: 0 } as const;
+export const STATION_LEVELS = [0, 10, 40, 120, 300, 800];
+export const stationLevel = (sxp: number) => STATION_LEVELS.reduce((lvl, need, i) => (sxp >= need ? i : lvl), 0);
+
+/* =====================================================================================================
+ * Switched off. Built for M2–M4, kept working and tested, not part of the simple game. Turning one on
+ * brings its server side back; its screens were removed from the player's view (git tag m4-full).
+ * ===================================================================================================== */
+
+export interface Features {
+  /** points for entering halls, landmarks and walking */
+  explore: boolean;
+  /** sector control between the roles, paid every 30 minutes */
+  sectors: boolean;
+  /** Mission Director offers and Signal Storms */
+  director: boolean;
+  groundControl: boolean;
+  teams: boolean;
+  /** the avatar editor */
+  avatars: boolean;
+}
+export const FEATURES: Features = { explore: false, sectors: false, director: false, groundControl: false, teams: false, avatars: false };
+export const ALL_FEATURES: Features = { explore: true, sectors: true, director: true, groundControl: true, teams: true, avatars: true };
+
+/** Remote play earned this share of explore and Director rewards. */
+export const REMOTE_SHARE = 0.15;
+export const EXPLORE_XP = { hall_first: 100, landmark: 20 } as const;
+export const SECTOR_HELD_XP = 40;
+export const SECTOR_TICK_MS = 30 * 60_000;
+export const INFLUENCE_TAU_MS = 45 * 60_000;
+export const INFLUENCE = { stamp: 1, verified_contact: 2, link_cross_crew: 1 } as const;
+export const INFLUENCE_PRESENCE: Record<Presence, number> = { remote: 0.25, onsite: 1 };
 
 /** On deck (physically there) the avatar follows the person: walking pace, not the 12 m/s of a joystick avatar. */
 export const DECK_MAX_SPEED_MPS = 2.8;
@@ -164,9 +154,7 @@ export const MISSION_INFO: Record<MissionTemplate, { title: string; xp: number; 
 };
 export const MISSION_OFFER_TTL_MS = 10 * 60_000;
 export const MISSION_INFLUENCE = 3;
-/** Director weights (Systems doc §10.2). */
 export const DIRECTOR_W = { proximity: 0.3, novelty: 0.25, quiet: 0.2, interest: 0.15, partner: 0.1, repeat: 0.3 } as const;
-
 export const STORM_MS = 15 * 60_000;
 export const STORM_GAP_MS = 10 * 60_000;
 export const STORM_MULT = 2;
@@ -176,12 +164,5 @@ export const GC_SESSION_MS = 20 * 60_000;
 export const GC_QUEUE_TTL_MS = 3 * 60_000;
 export const GC_MAX_WAYPOINTS = 5;
 
-/* ---------------- M4: live ops ---------------- */
-
-/** Trust (Systems doc §9). Only trusted players are eligible for anything a prize hangs on. */
-export const TRUST_W = { geofence: 0.25, hostCode: 0.3, plausible: 0.2, steps: 0.15, human: 0.1 } as const;
-export const TRUST_MIN = 0.7;
 export const TEAM_MAX = 12;
 export const TEAM_SCORERS = 5;
-/** Kill switches the crew can flip from the console without a deploy. */
-export const FLAG_KEYS = ['registration', 'claims', 'links', 'missions', 'gc', 'holograms'] as const;

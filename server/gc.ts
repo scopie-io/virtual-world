@@ -1,3 +1,4 @@
+// Switched off in the simple game (FEATURES.groundControl).
 // Ground Control (Systems doc §10.3): a remote player sees a target only visible "from orbit"; an on-site player
 // must physically reach it and scan. Waypoints only — no free text between strangers.
 import { Game, GameError, type StampOutcome } from './game.js';
@@ -20,6 +21,7 @@ export class GroundControl {
 
   /** Your role is not a choice: being verifiably on site makes you the astronaut. */
   async join(id: string): Promise<GcView> {
+    if (!this.g.features.groundControl) throw new GameError('off', 'Not part of this game', 404);
     const t = this.g.now(), cur = await this.session(id, t);
     if (cur?.state === 'active') return this.view(id);
     const role: GcRole = (await this.venue.isOnsite(id, t)) ? 'astro' : 'ground', want: GcRole = role === 'astro' ? 'ground' : 'astro';
@@ -85,7 +87,7 @@ export class GroundControl {
 
   /** The run completes when the astronaut proves they are at the target. Both are paid in full — this is how remote players earn well. */
   async afterStamp(o: StampOutcome): Promise<XpEvent[]> {
-    if (o.presence !== 'onsite') return [];
+    if (!this.g.features.groundControl || o.presence !== 'onsite') return [];
     const s = await this.g.db.get<Session>("SELECT * FROM gc_sessions WHERE astro_id = ? AND state = 'active' AND station_id = ? AND expires_at > ?", [o.id, o.station.id, o.t]);
     if (!s) return [];
     const ground = await this.g.player(s.ground_id);

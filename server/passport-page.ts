@@ -1,14 +1,14 @@
-// Public Passport page + vCard. This is the local stand-in for a nexova-hosted card page:
+// Public card page + vCard. This is the local stand-in for a nexova-hosted card page:
 // swap `renderPassport` for a redirect to the nexova URL once that API exists.
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-export interface PassportPageData { slug: string; name: string; company: string; role: string; phone: string; email: string; callsign: string; rank: string }
+export interface PassportPageData { slug: string; name: string; company: string; role: string; phone: string; email: string; callsign: string }
 
 export function renderPassport(p: PassportPageData, origin: string): string {
   const wa = p.phone ? `https://wa.me/${p.phone.replace(/\D/g, '')}` : '';
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(p.name)} — Mission X Passport</title><meta name="robots" content="noindex">
+<title>${esc(p.name)} — digital business card</title><meta name="robots" content="noindex">
 <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
 body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:Urbanist,system-ui,sans-serif;color:#f4fbff;background:radial-gradient(120% 90% at 50% 110%,#1aa9c9 0,#0b5f86 38%,#041a2c 78%)}
@@ -18,7 +18,7 @@ h1{margin:10px 0 2px;font-size:30px;line-height:1.05;font-weight:800}p{margin:0;
 .row{display:grid;gap:10px;margin-top:20px}a.btn{display:block;text-align:center;text-decoration:none;font-weight:800;padding:13px;border-radius:999px;border:1px solid rgba(111,227,255,.4);color:#f4fbff}
 a.primary{background:#ffc629;color:#1b1400;border-color:#ffc629}.foot{margin-top:18px;font-size:12px;opacity:.6;text-align:center}.foot a{color:#6fe3ff}
 </style></head><body><main class="card">
-<div class="k">Mission X Passport · <b>${esc(p.rank)}</b> · ${esc(p.callsign)}</div>
+<div class="k">Digital business card · <b>Mission X</b> · MIHAS 2026</div>
 <h1>${esc(p.name)}</h1><p>${esc(p.role)}${p.role && p.company ? ' · ' : ''}${esc(p.company)}</p>
 <div class="row">
 <a class="btn primary" href="${origin}/p/${esc(p.slug)}/vcard">Save contact</a>

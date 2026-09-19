@@ -6,7 +6,7 @@ import { createApp } from './app.js';
 import { buildServices } from './wire.js';
 import { testStores } from './test-db.js';
 import type { GcView, Hologram, HostCode, LevelData, Me, MissionsView } from '../shared/types.js';
-import { VENUE_DEFAULT } from '../shared/rules.js';
+import { ALL_FEATURES, VENUE_DEFAULT } from '../shared/rules.js';
 
 const root = resolve(import.meta.dirname, '..');
 const level = JSON.parse(readFileSync(resolve(root, 'public/data/floor.json'), 'utf8')) as LevelData;
@@ -16,7 +16,7 @@ const AT_MITEC = { lat: VENUE_DEFAULT.lat + 0.0005, lon: VENUE_DEFAULT.lon, acc:
 async function rig() {
   let now = Date.UTC(2026, 8, 23, 2, 5, 0);
   const clock = { advance: (ms: number) => { now += ms; }, get now() { return now; } };
-  const services = buildServices({ ...(await testStores()), secret: 'test-secret', level, publicOrigin: 'http://x.test', now: () => now });
+  const services = buildServices({ ...(await testStores()), features: ALL_FEATURES, secret: 'test-secret', level, publicOrigin: 'http://x.test', now: () => now });
   const app = createApp({ ...services, crewPin: '4321', publicOrigin: 'http://x.test', secureCookies: false });
   const user = () => {
     const jar = new Map<string, string>();
@@ -30,7 +30,7 @@ async function rig() {
       post: (p: string, b?: unknown) => call('POST', p, b ?? {}),
       me: async () => (await call('GET', '/api/me')).json.me as Me,
       async join(cls: string, name?: string) {
-        await call('POST', '/api/suit-up', { cls });
+        await call('POST', '/api/start', { role: cls });
         if (name) assert.equal((await call('POST', '/api/passport', { name, company: `${name} Co`, role: 'Owner', phone: '+60120000001', email: 'a@example.com', showContact: false, consentMarketing: false, consentNotice: true })).status, 200);
         return u;
       },
@@ -49,12 +49,12 @@ async function rig() {
 
 test('presence engine: the venue gate decides what a printed beacon is worth; scans anchor; deck walking; invisibility', async () => {
   const { clock, user, beacon, services } = await rig();
-  const p = await user().join('builder'), watcher = await user().join('closer');
+  const p = await user().join('visitor'), watcher = await user().join('exhibitor');
 
   // without a venue check a printed code is only worth a remote stamp — it may have been photographed
   let r = await p.post('/api/stamp', { stationId: '7C17', proof: 'beacon', beacon: await beacon('7C17') });
-  assert.equal(r.json.events[0].xp, 5, '40 x 0.15 remote x 0.6 beacon x 1.5 quiet');
-  assert.match(r.json.events[0].note, /venue/i);
+  assert.equal(r.json.events[0].xp, 10, 'a stamp, not a real-booth scan');
+  assert.match(r.json.events[0].note, /location/i);
   assert.equal(r.json.me.onsite, false);
   assert.equal(r.json.me.anchor, null);
 
@@ -71,7 +71,7 @@ test('presence engine: the venue gate decides what a printed beacon is worth; sc
   assert.equal(r.json.me.onsite, true);
   clock.advance(60_000);
   r = await p.post('/api/stamp', { stationId: '7C18', proof: 'beacon', beacon: await beacon('7C18') });
-  assert.equal(r.json.events[0].xp, 34, '40 x 1.0 on-site x 0.6 beacon x 0.94 second stamp in Hall 7 x 1.5 quiet');
+  assert.deepEqual([r.json.events[0].action, r.json.events[0].xp], ['scan', 50], 'known to be at MIHAS: a printed booth QR is a real-booth scan');
   assert.equal(r.json.me.anchor.stationId, '7C18');
   assert.deepEqual(Object.keys((await services.game.db.get<object>('SELECT * FROM venue_checks'))!).sort(), ['acc_m', 'checked_at', 'dist_m', 'ok', 'player_id'], 'no coordinates are stored');
 
@@ -83,7 +83,7 @@ test('presence engine: the venue gate decides what a printed beacon is worth; sc
   assert.ok(Math.abs(seen[0]!.x - b.x) <= 0.75 && seen[0]!.x % 1.5 === 0);
 
   // deck walking: real metres earn XP — at walking pace (4.5 m every 2 s) …
-  const pid = (await services.game.db.get<{ id: string }>("SELECT id FROM players WHERE cls = 'builder'"))!.id;
+  const pid = (await services.game.db.get<{ id: string }>("SELECT id FROM players WHERE cls = 'visitor'"))!.id;
   let walked = 0;
   for (let i = 1; i <= 14; i++) {
     clock.advance(2000);
@@ -112,7 +112,7 @@ test('presence engine: the venue gate decides what a printed beacon is worth; sc
 
 test('mission director: three different offers, one active at a time, progress from play, storms double a quiet zone', async () => {
   const { clock, user, services } = await rig();
-  const p = await user().join('strategist');
+  const p = await user().join('visitor');
   await p.post('/api/presence', { x: level.spawns.short.x, y: level.spawns.short.y, h: 0, spawn: true });
 
   let v = (await p.get('/api/missions')).json.data as MissionsView;
@@ -129,7 +129,7 @@ test('mission director: three different offers, one active at a time, progress f
   assert.equal(v.offers.length, 3);
 
   // deterministic progress checks: place missions directly, then play
-  const pid = (await services.game.db.get<{ id: string }>("SELECT id FROM players WHERE cls = 'strategist'"))!.id;
+  const pid = (await services.game.db.get<{ id: string }>("SELECT id FROM players WHERE cls = 'visitor'"))!.id;
   const place = async (template: string, params: object, progress: object, xp: number) => {
     await p.post('/api/missions/abandon');
     const id = crypto.randomUUID(), t = Date.UTC(2026, 8, 23, 2, 5, 0);
@@ -164,17 +164,16 @@ test('mission director: three different offers, one active at a time, progress f
   v = (await p.get('/api/missions')).json.data;
   assert.ok(v.storm && v.storm.mult === 2 && v.storm.endsInMs > 0);
   const s = v.storm!, inside = level.booths.find((b) => b.x >= s.x0 && b.x < s.x1 && b.y >= s.y0 && b.y < s.y1 && !['8H19', '8H20', '8H15', level.hero.id].includes(b.id))!;
-  const before = (await services.game.db.get<{ n: number }>('SELECT COUNT(*) AS n FROM stamps WHERE hall = ? AND player_id = ?', [inside.hall, pid]))!.n;
   await p.walkTo(inside.id);
   const st = await p.post('/api/stamp', { stationId: inside.id, proof: 'virtual' });
   // the zone may have closed while we walked; if it is still open the stamp must be doubled
   const still = ((await p.get('/api/missions')).json.data as MissionsView).storm;
-  if (still && still.zone === s.zone) { assert.match(st.json.events[0].note, /Storm/); assert.equal(st.json.events[0].xp, Math.round(40 * 0.15 * Math.max(0.4, 1 - 0.06 * before) * 1.5) * 2, 'the normal stamp value, doubled'); }
+  if (still && still.zone === s.zone) { assert.match(st.json.events[0].note, /Storm/); assert.equal(st.json.events[0].xp, 10 * 2, 'the normal stamp value, doubled'); }
 });
 
 test('ground control: roles follow reality, only Ground sees the target, only the astronaut can finish it, both are paid in full', async () => {
   const { clock, user } = await rig();
-  const host = await user().join('closer', 'Hana Host'), ground = await user().join('creator'), astro = await user().join('builder');
+  const host = await user().join('exhibitor', 'Hana Host'), ground = await user().join('visitor'), astro = await user().join('visitor');
   await host.post('/api/station/claim', { stationId: '7C17', company: 'Mamee', offer: '', link: '', color: 0 });
   clock.advance(6000);
 

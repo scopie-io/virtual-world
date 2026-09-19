@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { Engine } from '../game/engine';
 import { api, ApiError } from '../net/api';
-import { CLASSES, CLASS_INFO, CREW_INFO, RANKS, type PlayerClass } from '../../shared/rules';
+import { MISSION_STAMPS, POINTS, ROLE_INFO, chapters, type Role } from '../../shared/rules';
 import type { PassportInput } from '../../shared/types';
+import { atLaunchPad, bootError, bootNote, distToGoal, goalVia, guideOn, guideTarget, journey, level, me, modal, nearLift, nearStation, online, panelStation, phase, stampedSet, stationMap, toast, toasts } from '../state';
 import { DemoChip, TicketDemoHint, TourSheet } from '../demo/Tour';
-import { atLaunchPad, bootError, bootNote, currentDeck, distToGoal, goalVia, guideOn, guideTarget, level, me, mission, missions, modal, nearLift, nearStation, online, panelStation, phase, sectors, stampedSet, stationMap, toast, toasts } from '../state';
-import { DeckBanner, GcSheet, MissionsSheet, PresenceSheet } from './m3sheets';
-import { BoardsSheet, TeamSheet } from './m4sheets';
 import { Qr, Sheet, hex } from './common';
-import { AvatarSheet, ClaimSheet, ContactsSheet, CrewsSheet, FindSheet, HostSheet, LinkSheet, MenuSheet, StationSheet } from './sheets';
+import { BoardSheet, BoothSheet, ClaimSheet, ContactsSheet, FindSheet, MenuSheet, MyBoothSheet, SwapSheet } from './sheets';
 
 type Eng = { engine: () => Engine | null };
 
@@ -19,27 +17,21 @@ export function App({ engine }: Eng) {
       <Brand />
       {phase.value === 'boot' && <Splash text={bootNote.value} />}
       {phase.value === 'error' && <Splash text={bootError.value} error />}
-      {phase.value === 'suitup' && <SuitUp engine={engine} />}
-      {phase.value === 'play' && m !== 'suit' && <Hud engine={engine} />}
-      {m === 'passport' && <PassportForm />}
-      {m === 'ticket' && <Ticket />}
-      {m === 'docked' && <Docked />}
-      {m === 'board' && <BoardsSheet />}
-      {m === 'team' && <TeamSheet />}
-      {m === 'station' && <StationSheet engine={engine} />}
+      {phase.value === 'start' && <Start engine={engine} />}
+      {phase.value === 'play' && <Hud engine={engine} />}
+      {m === 'card' && <CardForm />}
+      {m === 'prize' && <PrizeCode />}
+      {(m === 'claimed' || m === 'complete') && <Finish />}
+      {m === 'rules' && <Rules />}
+      {m === 'board' && <BoardSheet />}
+      {m === 'booth' && <BoothSheet engine={engine} />}
       {m === 'claim' && <ClaimSheet />}
-      {m === 'host' && <HostSheet />}
-      {m === 'link' && <LinkSheet />}
+      {m === 'mybooth' && <MyBoothSheet />}
+      {m === 'swap' && <SwapSheet />}
       {m === 'contacts' && <ContactsSheet />}
-      {m === 'suit' && <AvatarSheet engine={engine} />}
       {m === 'find' && <FindSheet />}
-      {m === 'crews' && <CrewsSheet />}
       {m === 'menu' && <MenuSheet />}
-      {m === 'missions' && <MissionsSheet />}
-      {m === 'gc' && <GcSheet />}
-      {m === 'presence' && <PresenceSheet engine={engine} />}
       {m === 'tour' && <TourSheet />}
-      {phase.value === 'play' && <DeckBanner engine={engine} />}
       <Toasts />
     </>
   );
@@ -53,120 +45,117 @@ const Splash = ({ text, error }: { text: string; error?: boolean }) => (
   <div class="splash"><div class={error ? 'x err' : 'x'}>✕</div><p>{text}</p>{error && <button class="btn" onClick={() => location.reload()}>Try again</button>}</div>
 );
 
-/* ------------------------------------------------------------------ suit up */
+/* ------------------------------------------------------------------ start: two doors */
 
-function SuitUp({ engine }: Eng) {
-  const [cls, setCls] = useState<PlayerClass>(me.value?.cls ?? 'builder');
-  const [spawn, setSpawn] = useState<'short' | 'epic'>('short');
-  const [busy, setBusy] = useState(false);
-  const returning = !!me.value?.cls;
-  const go = async () => {
-    setBusy(true);
-    try { await api.suitUp(cls); engine()?.start(spawn); phase.value = 'play'; api.track('start', { cls, spawn }); }
-    catch (e) { toast(e instanceof ApiError ? e.message : 'Could not start', undefined, 'warn'); setBusy(false); }
+function Start({ engine }: Eng) {
+  const [busy, setBusy] = useState<Role | null>(null), was = me.value?.cls ?? null;
+  const go = async (role: Role) => {
+    setBusy(role);
+    try {
+      await api.start(role); engine()?.start('short'); phase.value = 'play'; api.track('start', { role });
+      if (role === 'exhibitor') modal.value = me.value?.passport ? 'mybooth' : 'card';
+    } catch (e) { toast(e instanceof ApiError ? e.message : 'Could not start', undefined, 'warn'); setBusy(null); }
   };
   return (
     <div class="sheet suit">
-      <div class="k">Mission X · MIHAS 2026 · Level 2</div>
+      <div class="k">Mission X · MIHAS 2026</div>
       <h1>Find the <b>X</b>.</h1>
-      <p class="lead">The whole expo is the map. The X is real — Booth 8H18B. Pick your crew and walk.</p>
+      <p class="lead">The whole MIHAS expo, live on your phone. Walk it, stamp booths, meet people — and find the X for your free digital business card.</p>
       <div class="classes">
-        {CLASSES.map((c) => (
-          <button key={c} class={'cls' + (c === cls ? ' on' : '')} onClick={() => setCls(c)} aria-pressed={c === cls}>
-            <span class="dot" style={{ background: hex(CREW_INFO[c].color) }} />
-            <strong>{CLASS_INFO[c].label}</strong><small>{CLASS_INFO[c].line} · {CREW_INFO[c].crew}</small>
-          </button>
-        ))}
+        <button class={'cls' + (was !== 'exhibitor' ? ' on' : '')} disabled={!!busy} onClick={() => go('visitor')}>
+          <span class="dot" style={{ background: hex(ROLE_INFO.visitor.color) }} />
+          <strong>{busy === 'visitor' ? 'Landing…' : was === 'visitor' ? 'Continue visiting' : "I'm visiting"}</strong><small>One mission, about five minutes. A free gift at the end.</small>
+        </button>
+        <button class={'cls' + (was === 'exhibitor' ? ' on' : '')} disabled={!!busy} onClick={() => go('exhibitor')}>
+          <span class="dot" style={{ background: hex(ROLE_INFO.exhibitor.color) }} />
+          <strong>{busy === 'exhibitor' ? 'Landing…' : was === 'exhibitor' ? 'Back to my booth' : "I'm exhibiting"}</strong><small>Put your booth in the game. Collect visitor leads, free.</small>
+        </button>
       </div>
-      <div class="seg" role="group" aria-label="Route">
-        <button class={spawn === 'short' ? 'on' : ''} onClick={() => setSpawn('short')}><strong>Short</strong><small>Hall 8 entrance · 37 m</small></button>
-        <button class={spawn === 'epic' ? 'on' : ''} onClick={() => setSpawn('epic')}><strong>Epic</strong><small>Main entrance · 228 m</small></button>
-      </div>
-      <button class="btn primary big" disabled={busy} onClick={go}>{busy ? 'Suiting up…' : `${returning ? 'Continue' : 'Launch'} as ${me.value?.callsign ?? '…'}`}</button>
-      <p class="fine">An expo quest by Lean X Digital. Unofficial — not affiliated with MATRADE or MIHAS.</p>
+      <p class="fine">An expo game by Lean X Digital. Unofficial — not affiliated with MATRADE or MIHAS.</p>
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ HUD */
+/* ------------------------------------------------------------------ in play: one instruction at a time */
 
 function Hud({ engine }: Eng) {
-  const m = me.value!, mi = mission.value, st = nearStation.value, has = st && stampedSet.value.has(st.id), view = st ? stationMap.value.get(st.id) : undefined;
+  const m = me.value!, j = journey.value!, st = nearStation.value, has = st && stampedSet.value.has(st.id), view = st ? stationMap.value.get(st.id) : undefined;
   const [stamping, setStamping] = useState(false);
-  const floor = RANKS.find((r) => r.id === m.rank.id)?.xp ?? 0, span = m.nextRank ? m.nextRank.xp - floor : 1, into = m.nextRank ? m.xp - floor : 1;
-  const gate = m.blockedBy === 'docked' ? 'Dock at the Launch Pad to rank up' : m.blockedBy === 'passport' ? 'Claim your Passport to rank up' : null;
-  const goal = guideTarget.value, stName = st ? view?.company || st.name || 'Station ' + st.id : '';
-  const job = missions.value?.active ?? null, storm = missions.value?.storm ?? null, offers = missions.value?.offers.length ?? 0;
+  const goal = guideTarget.value, stName = st ? view?.company || st.name || 'Booth ' + st.id : '', total = (level.value?.booths.length ?? 1) - 1;
+  const trail = guideOn.value && distToGoal.value != null && (goal || (!m.passport && j.kind === 'visitor'));
+  const word = j.kind === 'visitor' ? 'Chapter' : 'Step';
+
+  // the ending is shown once, the moment the fifth chapter closes and nothing else is on screen
+  useEffect(() => {
+    if (j.kind !== 'visitor' || j.now || modal.value) return;
+    try { if (localStorage.getItem('mx_complete')) return; localStorage.setItem('mx_complete', '1'); } catch { /* private mode: show it */ }
+    modal.value = 'complete'; api.track('mission_complete');
+  }, [j.now, modal.value]);
 
   const doStamp = async () => { if (!st) return; setStamping(true); await engine()?.stamp(st); setStamping(false); };
-  const openStation = () => { panelStation.value = st; modal.value = 'station'; };
+  const toX = () => { const h = level.value!.hero; guideTarget.value = { x: h.dock.x, y: h.dock.y, label: 'The X · Booth 8H18B' }; guideOn.value = true; };
 
   return (
     <>
       <div class="rank">
-        <div class="rank-top"><strong>{m.rank.label}</strong><span>{m.callsign}</span></div>
-        <div class="bar"><i style={{ width: `${Math.min(100, (into / span) * 100)}%` }} /></div>
-        <div class="rank-bot"><span>{m.xp.toLocaleString()} XP{m.nextRank ? ` / ${m.nextRank.xp.toLocaleString()}` : ''}</span><span title="Signal">⚡ {m.signal}</span><span title="Stamps">◆ {m.stamps.length}</span><span title="Links">⇄ {m.links}</span></div>
-        {gate && <div class="gate">{gate}</div>}
-        <button class="sectorstrip" onClick={() => (modal.value = 'crews')} aria-label="Sector control">
-          {(level.value?.decks ?? []).slice().sort((a, b) => a.level - b.level).map((d) => (
-            <span key={d.level} class={'deckgroup' + (d.level === currentDeck.value ? ' here' : '')}>
-              {(sectors.value?.sectors ?? []).filter((s) => level.value!.halls.find((h) => h.id === s.hall)?.deck === d.level).sort((a, b) => a.hall - b.hall).map((s) => <i key={s.hall} style={s.holder ? { background: hex(CREW_INFO[s.holder].color), color: '#06202f' } : {}}>{s.hall}</i>)}
-            </span>
-          ))}
-          {m.cls && <em style={{ color: hex(CREW_INFO[m.cls].color) }}>{CREW_INFO[m.cls].crew}</em>}
-        </button>
+        <div class="rank-top"><strong>{m.xp.toLocaleString()} points</strong><span style={m.cls ? { color: hex(ROLE_INFO[m.cls].color) } : {}}>{m.callsign}</span></div>
+        <div class="rank-bot"><span title="Booths stamped">◆ {m.stamps.length} / {total.toLocaleString()} booths</span><span title="Cards swapped">⇄ {m.links}</span></div>
       </div>
 
       <div class="tools">
-        <button class={'chip' + (!job && offers ? ' pulse' : '')} onClick={() => (modal.value = 'missions')}>Missions{storm ? ' ⚡' : ''}</button>
         <button class="chip" onClick={() => (modal.value = 'find')}>Find</button>
-        <button class="chip" onClick={() => (modal.value = 'link')}>Link</button>
+        <button class="chip" onClick={() => (modal.value = 'swap')}>Swap cards</button>
         <button class="chip" onClick={() => (modal.value = 'menu')} aria-label="Menu">☰</button>
-        <span class="chip ghost">{online.value} online</span>
+        <span class="chip ghost">{online.value} here now</span>
         <DemoChip />
       </div>
 
-      {mi && (
-        <div class="mission">
-          <div class="k">{goal ? 'Guiding you to' : job ? `Director · ${job.progress}` : mi.k}</div><h2>{goal ? goal.label : job ? job.title : mi.title}</h2>{!goal && <p>{job ? job.brief : mi.body}</p>}
-          {guideOn.value && goalVia.value && <div class="via">⇅ {goalVia.value}</div>}
-          {guideOn.value && distToGoal.value != null && (
-            <div class="dist"><span>{distToGoal.value} m {goalVia.value ? 'to the lift' : goal ? 'to go' : 'to the X'}</span>
-              <span>{goal && <button class="link" onClick={() => (guideTarget.value = null)}>Cancel</button>} <button class="link" onClick={() => engine()?.autopilot()}>Take me there</button></span></div>
-          )}
-        </div>
-      )}
+      <div class="mission">
+        <div class="k">{goal ? 'Guiding you to' : j.now ? `${word} ${j.now.n} of ${j.steps.length}` : j.kind === 'visitor' ? 'Mission complete' : 'Your booth is working'}</div>
+        <h2>{goal ? goal.label : j.now ? j.now.title : 'Free play'}</h2>
+        {!goal && <p>{j.now ? j.now.todo : 'Stamp more booths, meet more people, climb the board.'}</p>}
+        <div class="dots" role="img" aria-label={`${j.done} of ${j.steps.length} done`}>{j.steps.map((s) => <i key={s.n} class={s.done ? 'on' : s === j.now ? 'now' : ''} />)}</div>
+        {!goal && j.kind === 'visitor' && j.now?.n === 3 && <div class="via">{Math.min(m.stamps.length, MISSION_STAMPS)} of {MISSION_STAMPS} stamped — walk up to any booth</div>}
+        {!goal && j.kind === 'visitor' && j.now?.n === 4 && <div class="dist"><span>Met someone?</span><button class="link" onClick={() => (modal.value = 'swap')}>Swap cards</button></div>}
+        {!goal && j.kind === 'visitor' && j.now?.n === 5 && <div class="dist"><button class="link" onClick={() => (modal.value = 'prize')}>My prize code</button><button class="link" onClick={toX}>Guide me to the X</button></div>}
+        {!goal && j.kind === 'exhibitor' && <div class="dist"><span /><button class="link" onClick={() => (modal.value = m.passport ? 'mybooth' : 'card')}>{m.hosting.length ? 'Open my booth' : 'Set up my booth'}</button></div>}
+        {guideOn.value && goalVia.value && trail && <div class="via">⇅ {goalVia.value}</div>}
+        {trail && (
+          <div class="dist"><span>{distToGoal.value} m {goalVia.value ? 'to the lift' : goal ? 'to go' : 'to the X'}</span>
+            <span>{goal && <button class="link" onClick={() => (guideTarget.value = null)}>Cancel</button>} <button class="link" onClick={() => engine()?.autopilot()}>Take me there</button></span></div>
+        )}
+      </div>
 
       <div class="action">
         {nearLift.value && <div class="liftrow">{nearLift.value.others.map((l) => <button key={l.deck} class="btn lift" onClick={() => engine()?.useLift(l)}>⇅ Level {l.deck}<small>{level.value?.decks.find((d) => d.level === l.deck)?.label.split(' · ')[1]}</small></button>)}</div>}
-        {atLaunchPad.value && !m.passport && <button class="btn primary big" onClick={() => (modal.value = 'passport')}>Claim your Passport</button>}
-        {atLaunchPad.value && m.passport && !m.docked && <button class="btn primary big" onClick={() => (modal.value = 'ticket')}>Show Golden Ticket</button>}
-        {!atLaunchPad.value && st && !has && <button class="btn primary big" disabled={stamping} onClick={doStamp}>{stamping ? 'Stamping…' : `Stamp ${stName}`}</button>}
+        {atLaunchPad.value && !m.passport && <button class="btn primary big" onClick={() => (modal.value = 'card')}>Get my free card</button>}
+        {atLaunchPad.value && m.passport && !m.docked && <button class="btn primary big" onClick={() => (modal.value = 'prize')}>Show my prize code</button>}
+        {!atLaunchPad.value && st && !has && <button class="btn primary big" disabled={stamping} onClick={doStamp}>{stamping ? 'Stamping…' : `Stamp ${stName} · +${POINTS.stamp}`}</button>}
         {!atLaunchPad.value && st && (
-          <button class={'chip' + (has ? ' on' : '')} onClick={openStation}>{has ? '◆ ' : ''}{stName} · {view ? (view.hosted ? 'host here now' : 'online') : 'station'} ›</button>
+          <button class={'chip' + (has ? ' on' : '')} onClick={() => { panelStation.value = st; modal.value = 'booth'; }}>{has ? '◆ ' : ''}{stName}{view ? (view.hosted ? ' · at the counter now' : ' · online') : ''} ›</button>
         )}
       </div>
     </>
   );
 }
 
-/* ------------------------------------------------------------------ passport */
+/* ------------------------------------------------------------------ the card, the prize code, the ending */
 
-function PassportForm() {
+function CardForm() {
+  const exhibitor = me.value?.cls === 'exhibitor';
   const [f, setF] = useState<PassportInput>({ name: '', company: '', role: '', phone: '', email: '', showContact: true, consentMarketing: false, consentNotice: false });
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false);
   // functional update: browser autofill fires several input events in one tick, and a stale closure would keep only the last
   const set = (k: keyof PassportInput) => (e: Event) => { const t = e.target as HTMLInputElement, v = t.type === 'checkbox' ? t.checked : t.value; setF((p) => ({ ...p, [k]: v })); };
   const submit = async (e: Event) => {
     e.preventDefault(); setErr(''); setBusy(true);
-    try { await api.passport(f); api.track('passport'); modal.value = 'ticket'; }
+    try { await api.card(f); api.track('card'); modal.value = exhibitor ? 'mybooth' : 'prize'; }
     catch (x) { setErr(x instanceof ApiError ? x.message : 'Something went wrong'); setBusy(false); }
   };
   return (
-    <Sheet k="You found the X" title="Your Passport">
+    <Sheet k={exhibitor ? 'First · who runs the booth' : 'You found the X'} title="Your free digital business card">
       <form onSubmit={submit}>
-        <p class="lead">Your digital business card — built live. It is what you exchange with people and exhibitors for the rest of the mission.</p>
+        <p class="lead">{exhibitor ? 'Your card tells visitors and our crew who is behind the booth. It takes a minute, and it is yours to keep.' : 'Built for you now, yours to keep: a card with its own link and QR. It is what you swap with people and leave at booths.'}</p>
         <label>Name<input required maxLength={80} autocomplete="name" value={f.name} onInput={set('name')} /></label>
         <label>Company<input required maxLength={100} autocomplete="organization" value={f.company} onInput={set('company')} /></label>
         <label>Role<input maxLength={80} autocomplete="organization-title" value={f.role} onInput={set('role')} /></label>
@@ -174,20 +163,20 @@ function PassportForm() {
           <label>WhatsApp / phone<input required type="tel" inputMode="tel" autocomplete="tel" placeholder="+60…" value={f.phone} onInput={set('phone')} /></label>
           <label>Email<input required type="email" autocomplete="email" value={f.email} onInput={set('email')} /></label>
         </div>
-        <label class="check"><input type="checkbox" checked={f.showContact} onChange={set('showContact')} /><span>Show my phone and email on my public card page</span></label>
-        <label class="check"><input type="checkbox" checked={f.consentNotice} onChange={set('consentNotice')} /><span>I have read the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Notice</a> and agree to Lean X Digital processing my details to run Mission X.</span></label>
+        <label class="check"><input type="checkbox" checked={f.showContact} onChange={set('showContact')} /><span>Show my phone and email on my card page</span></label>
+        <label class="check"><input type="checkbox" checked={f.consentNotice} onChange={set('consentNotice')} /><span>I have read the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Notice</a> and agree to Lean X Digital processing my details to run Mission X. My first name and initial show in the game and on the leaderboard.</span></label>
         <label class="check"><input type="checkbox" checked={f.consentMarketing} onChange={set('consentMarketing')} /><span>Optional — Lean X Digital may contact me by WhatsApp or email about its services.</span></label>
         {err && <p class="err" role="alert">{err}</p>}
-        <button class="btn primary big" disabled={busy}>{busy ? 'Building your card…' : 'Issue my Passport · +200 XP'}</button>
+        <button class="btn primary big" disabled={busy}>{busy ? 'Building your card…' : `Create my card · +${POINTS.card}`}</button>
       </form>
     </Sheet>
   );
 }
 
-function Ticket() {
+function PrizeCode() {
   const m = me.value!;
   useEffect(() => { // the crew's scan lands on the server; poll until it shows up here
-    const id = setInterval(async () => { try { await api.me(); if (me.value?.docked) { modal.value = 'docked'; api.track('docked'); } } catch { /* keep trying */ } }, 4000);
+    const id = setInterval(async () => { try { await api.me(); if (me.value?.docked) { modal.value = 'claimed'; api.track('claimed'); } } catch { /* keep trying */ } }, 4000);
     return () => clearInterval(id);
   }, []);
   if (!m.passport || !m.ticket) return null;
@@ -195,26 +184,56 @@ function Ticket() {
   return (
     <div class="scrim"><div class="sheet ticket">
       <button class="close" aria-label="Close" onClick={() => (modal.value = null)}>×</button>
-      <div class="k gold">Golden Ticket</div><h2>{m.passport.name}</h2>
+      <div class="k gold">Prize code</div><h2>{m.passport.name}</h2>
       <p class="lead">{[m.passport.role, m.passport.company].filter(Boolean).join(' · ')}</p>
-      <Qr text={url} label="Golden Ticket QR code" />
+      <Qr text={url} label="Prize code QR" />
       <div class="code">{m.ticket.code}</div>
-      <p class="lead">Show this at the <b>real</b> Booth <b>8H18B</b>. Crew scans it — <b>+500 XP</b> and your rank unlocks.</p>
-      <p class="fine">Enter Hall 8 · turn left past MIHAS Merchandise · turn right at the end · second booth on the right, opposite Bernama Studio.</p>
-      <a class="btn" href={m.passport.url} target="_blank" rel="noopener">Open my card page</a>
+      <p class="lead">Show this at the <b>real</b> Booth <b>8H18B</b>. Our crew scans it: <b>+{POINTS.booth} points</b> and your free gift.</p>
+      <p class="fine">MIHAS 2026 · MITEC Kuala Lumpur · 23–26 September · Hall 8, Level 2 — enter Hall 8, left past MIHAS Merchandise, right at the end, second booth on the right. Your code waits for you until the show closes.</p>
+      <a class="btn" href={m.passport.url} target="_blank" rel="noopener">Open my card</a>
       <TicketDemoHint />
     </div></div>
   );
 }
 
-function Docked() {
-  const m = me.value!;
+/** Two moments, one screen: the crew's scan at the booth, and the fifth chapter closing. When both are true this is the ending. */
+function Finish() {
+  const j = journey.value, left = j?.kind === 'visitor' ? j.steps.filter((s) => !s.done) : [];
+  const complete = j?.kind === 'visitor' && left.length === 0;
+  const close = () => { try { if (complete) localStorage.setItem('mx_complete', '1'); } catch { /* ignore */ } modal.value = null; };
   return (
     <div class="scrim"><div class="sheet ticket">
-      <div class="k gold">Mission complete</div><h2>Docked. Welcome aboard, {m.rank.label}.</h2>
-      <p class="lead">You made it real. +500 XP — your rank is unlocked and the rest of the station is yours to chart.</p>
-      <button class="btn primary big" onClick={() => (modal.value = null)}>Keep exploring</button>
+      <div class="k gold">{complete ? 'Mission complete' : 'Claimed at Booth 8H18B'}</div>
+      {complete ? (
+        <>
+          <h2>You found the X.</h2>
+          <p class="lead">In a few minutes you found a brand, got something useful from it, looked around, made a contact, and showed up in person.</p>
+          <p class="lead">That is a customer journey. Building them is what <b>Lean X Digital</b> does for businesses.</p>
+          <a class="btn primary big" href="https://www.nexova.my" target="_blank" rel="noopener" onClick={() => api.track('cta_nexova')}>See what we could build for you</a>
+          <button class="btn big" style={{ marginTop: '8px' }} onClick={close}>Keep playing</button>
+        </>
+      ) : (
+        <>
+          <h2>+{POINTS.booth} points. Enjoy your gift.</h2>
+          <p class="lead">{left.length ? <>Still open: {left.map((s) => s.title).join(' · ')}. Finish them to complete the mission.</> : 'Thank you for coming by.'}</p>
+          <button class="btn primary big" onClick={close}>Keep playing</button>
+        </>
+      )}
     </div></div>
+  );
+}
+
+/* ------------------------------------------------------------------ the whole rulebook */
+
+function Rules() {
+  const rows: [string, number][] = [['Stamp a booth in the game', POINTS.stamp], ['Leave your card at a booth', POINTS.leaveCard], ['Scan a booth QR at the real booth', POINTS.scan], ['Swap cards with a person', POINTS.swap], ['Get your digital business card at the X', POINTS.card], ['Show your prize code at the real Booth 8H18B', POINTS.booth]];
+  return (
+    <Sheet k="How to play" title="One mission. Five chapters.">
+      <ol class="rules">{chapters({ started: false, card: false, stamps: 0, swaps: 0, cardsLeft: 0, claimed: false }).map((c) => <li key={c.n}><strong>{c.title}</strong><span>{c.todo}</span></li>)}</ol>
+      <p class="fine">After the mission it is free play: every action scores, and the board ranks everyone by points.</p>
+      <table class="points"><tbody>{rows.map(([what, n]) => <tr key={what}><td>{what}</td><td>+{n}</td></tr>)}</tbody></table>
+      <p class="fine">Exhibitors: bring your booth online, show its QR at your counter, and collect the cards visitors leave — free. The board ranks booths by visits.</p>
+    </Sheet>
   );
 }
 

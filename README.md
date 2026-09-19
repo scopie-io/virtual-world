@@ -1,7 +1,19 @@
-# Mission X — M1 to M4
+# Mission X
 
-Browser quest game on an accurate model of MIHAS 2026 Level 2. Find the X (Booth **8H18B**), claim a Passport, dock in real life.
-Design docs: [`docs/game-bible.md`](docs/game-bible.md) (world, brand, characters), [`docs/game-systems.md`](docs/game-systems.md) (rules and algorithms), [`docs/research-and-plan.md`](docs/research-and-plan.md) (references, stack, compliance).
+The whole MIHAS 2026 expo — three levels, 1,599 booths — live in the browser. Visitors play one five-chapter mission:
+arrive, find the X (Booth **8H18B**) for a free digital business card, stamp five booths, swap cards, and claim a gift at
+the real booth. Exhibitors bring their booth online, show its QR at the counter and collect the cards visitors leave.
+
+**The game on one page: [`docs/game-rules.md`](docs/game-rules.md).** That page is the source of truth for rules and
+wording; the numbers are in `shared/rules.ts`.
+
+> **19 Sep 2026 — simplified.** The M1–M4 build had ~25 invented terms, 17 player screens, 15 ways to earn XP and a
+> six-factor stamp formula. It is now two roles (visitor, exhibitor), one mission, fixed points, plain trade-show words.
+> The larger systems are switched off behind `FEATURES` in `shared/rules.ts` — still compiled and still tested — and
+> their screens are gone; git tag `m4-full` is the last commit that has them. The "What M1 … M4 adds" sections
+> further down describe those engines and use the old vocabulary (station = booth, Passport = card, Golden Ticket =
+> prize code, dock = claimed at the booth, XP = points, Link-up = swap cards).
+> Older design docs, kept for reference: [`docs/game-bible.md`](docs/game-bible.md), [`docs/game-systems.md`](docs/game-systems.md), [`docs/research-and-plan.md`](docs/research-and-plan.md).
 
 ## Run it
 
@@ -30,13 +42,12 @@ runs as a self-contained demo of everything up to M4. Nothing to configure:
   WebAssembly (`src/demo/sw.ts`). The game, `/crew.html` and `/screen.html` in the same browser share that one world, and
   it is kept in IndexedDB, so reloads and new tabs carry on where you were.
 - The world is populated (`src/demo/sim.ts`): ~39 simulated exhibitors and visitors with a few hours of history —
-  stations online and hosted, stamps, card shares, links, three company teams, sector control, a Daily Drop, a running
-  Signal Storm, one account flagged for review — and they keep walking the decks and stamping while you play. All of it
+  booths online, stamps, cards left and swapped, a booth of the day, one player flagged for review — and they keep walking the decks and stamping while you play. All of it
   goes through the same services a real player uses, so XP, the ledger, boards and trust stay consistent.
-- **Demo tour** (pink chip in the HUD) is the checklist for M1–M4, with ticks that fill in as you go. Pink "Demo" boxes
-  inside the normal sheets stand in for what one person at a desk cannot do: the code on a host's screen, a booth's
-  printed beacon, a person to Link with (both directions), visitors for the station you host, the booth crew's scan,
-  a Ground Control partner (either role), a simulated venue check-in, +1,500 XP, and **Reset the demo world**.
+- **Demo guide** (pink chip in the HUD) walks the visitor mission, the exhibitor steps and the crew tools, with ticks
+  that fill in as you go. Pink "Demo" boxes inside the normal screens stand in for what one person at a desk cannot be:
+  the code on an exhibitor's screen, a booth's printed QR, a person to swap cards with (both directions), visitors for
+  the booth you bring online, our crew's scan of your prize code — and **Reset the demo**.
 - Crew console PIN in the demo: `2026` (shown on its sign-in screen). Mission Control needs that sign-in first.
 - When you later add the Turso variables (next section) and redeploy, `/api/healthz` answers `live`, the pages unregister
   the demo worker and the site is the real thing. Force either mode with `?demo=1` / `?demo=0` (remembered per browser)
@@ -206,6 +217,8 @@ The server refuses to boot in production without `MX_SECRET` and `CREW_PIN`. It 
 - Personal data never reaches other players — they see callsign, class, rank, position only.
 
 ## Verified vs not yet verified
+
+**Verified on this machine (simplified game, 19 Sep):** 20 tests. Two new journey tests drive the whole visitor mission (names, fixed points, chapter order, the board line, switched-off systems answering "off") and the three exhibitor steps through the HTTP API; the M2–M4 engine tests run with their features switched on and the new numbers; the demo-world test runs the simplified cast. Browser run on the static no-backend build: two-door start → Chapter 2 HUD with five dots → autopilot → card (+200, name becomes "Demo T.") → prize code → stamps at +10 → real-booth scan at a simulated exhibitor (+50, "met in person", +150 booth of the day) → leave card (+10) → simulated crew scan → the ending → menu (5 items) → "I am exhibiting" → find booth → online → My booth with QR, visits and leads. Not re-verified in the browser after this change: the crew console and big screen pages (their API is covered by tests), and lifts.
 
 **Verified on this machine (demo mode):** 19 tests — the new one seeds the demo world on the same WebAssembly SQLite and drives it through the real HTTP app (cookie seam, presence + holograms, docking, crew login / leads / stations / beacons / Mission Control feed, simulated venue check-in, host code → stamp + Verified Contact + Daily Drop, Link-up both ways, claim → visitor → lead, a full Ground Control run, XP cache == ledger). Browser run of the **production build served as static files with no API** (`npm run demo`): first visit installs the worker and builds the world (~1 s), suit up, autopilot, Passport, simulated crew scan → Docked, host code at a cast-hosted station (+40 / +60 / +150 Daily Drop), Link-up in both directions, Ground Control with a cast astronaut walking to the marker → "Target reached", public card page and vCard served by the worker, world and session intact after reload, worker upgrade with a world-version bump. **Not done in the browser:** signing in to the crew console / Mission Control (covered by the test above through the same API, not clicked through), and any deployment on Vercel itself.
 

@@ -36,15 +36,14 @@ test('demo world: seeded, consistent, and every helper works through the real AP
   console.log(`  seeded in ${w.seedMs} ms · database ${(w.db.bytes().length / 1024).toFixed(0)} KB`);
   assert.ok(await DemoSim.isSeeded(s, 1));
   const st = (await sim.state())!;
-  assert.ok(st.bots >= 35 && st.teams.length === 3 && st.pendingStation && st.drop);
+  assert.ok(st.bots >= 35 && st.pendingStation && st.drop);
 
   // history looks like a show day
   const totals = await s.ops.totals();
   assert.ok(totals.stamps > 150, `stamps ${totals.stamps}`); assert.ok(totals.links >= 10, `links ${totals.links}`); assert.ok(totals.docked >= 5); assert.ok(totals.stations >= 10, `stations ${totals.stations}`);
-  assert.equal(new Set(st.teams.map((x) => x.name)).size, 3, 'team names are distinct');
-  for (const k of ['today', 'xp', 'explorer', 'connector', 'stations', 'companies'] as const) assert.ok((await s.ops.board(k, null)).length >= 3, `board ${k}`);
-  assert.ok((await s.crews.view()).sectors.some((x) => x.holder), 'a crew holds a sector');
-  assert.ok(await s.director.stormView(), 'a Signal Storm is running');
+  for (const k of ['today', 'xp', 'stations'] as const) assert.ok((await s.ops.board(k, null)).length >= 3, `board ${k}`);
+  assert.ok((await s.ops.board('xp', null)).every((r) => /^[A-Z][a-z]+ [A-Z]\.( \d+)?$|^(Visitor|Exhibitor) \d+$/.test(r.title)), 'plain names on the board');
+  assert.equal(await s.director.stormView(), null, 'no Signal Storms in the simple game');
   assert.ok((await s.ops.review('today')).some((r) => r.flags > 0), 'someone to review');
   // the cached XP total always equals the ledger
   const drift = await s.game.db.all('SELECT p.id FROM players p WHERE p.xp != (SELECT COALESCE(SUM(xp),0) FROM xp_ledger l WHERE l.player_id = p.id AND l.voided = 0)');
@@ -53,7 +52,7 @@ test('demo world: seeded, consistent, and every helper works through the real AP
   // a visitor arrives: session through the cookie seam, suit up, passport
   await call('GET', '/api/me');
   assert.ok(w.jar.mx_s, 'session cookie stored in the jar');
-  await call('POST', '/api/suit-up', { cls: 'builder' });
+  await call('POST', '/api/start', { role: 'visitor' });
   await call('POST', '/api/presence', { x: level.spawns.short.x, y: level.spawns.short.y, h: 0, spawn: true });
   await call('POST', '/api/passport', { name: 'Demo Tester', company: 'Lean X Digital', role: 'QA', phone: '+60123456789', email: 'qa@example.com', showContact: true, consentMarketing: false, consentNotice: true });
   const pid = (await s.game.db.get<{ id: string }>("SELECT player_id AS id FROM passports WHERE email = 'qa@example.com'"))!.id;
@@ -78,7 +77,7 @@ test('demo world: seeded, consistent, and every helper works through the real AP
   const hint = (await sim.hint(st.drop!))!;
   assert.ok(hint.claimed && hint.digits);
   const stamped = await call<null>('POST', '/api/stamp', { stationId: st.drop, proof: 'host', code: hint.digits });
-  assert.ok(JSON.stringify(stamped).includes('daily_drop') && JSON.stringify(stamped).includes('verified_contact'));
+  assert.ok(JSON.stringify(stamped).includes('daily_drop') && JSON.stringify(stamped).includes('"scan","xp":50'), JSON.stringify(stamped));
 
   // Link-up, both directions
   const theirs = (await sim.partnerCode(pid))!;
@@ -94,24 +93,7 @@ test('demo world: seeded, consistent, and every helper works through the real AP
   assert.equal(v?.station, mine.id);
   assert.equal((await call<unknown[]>('GET', `/api/host/leads?station=${mine.id}`)).data.length, 1);
 
-  // Ground Control from home: a cast astronaut pairs up, follows the markers and reaches the target
-  await s.game.db.run('DELETE FROM venue_checks WHERE player_id = ?', [pid]); await s.game.db.run('DELETE FROM anchors WHERE player_id = ?', [pid]);
-  const q = await call<{ state: string; role: string }>('POST', '/api/gc/join', {});
-  assert.deepEqual([q.data.state, q.data.role], ['queued', 'ground']);
-  await s.game.db.run('UPDATE gc_queue SET queued_at = queued_at - 5000');
-  let run = q.data as { state: string; target?: { x: number; y: number } | null };
-  for (let i = 0; i < 6 && run.state !== 'active'; i++) { await new Promise((r) => setTimeout(r, 950)); await sim.tick(); run = (await call<typeof run>('GET', '/api/gc')).data; }
-  assert.equal(run.state, 'active'); assert.ok(run.target);
-  await call('POST', '/api/gc/waypoint', { x: run.target!.x, y: run.target!.y - 3 });
-  // fast-forward the walk: put the astronaut next to the target, as if the minute had passed
-  const astro = (sim as unknown as { bots: { kind: string; pos: { x: number; y: number }; path: unknown[] }[] }).bots.find((b) => b.kind === 'gcAstro')!;
-  for (let i = 0; i < 12 && run.state === 'active'; i++) {
-    await new Promise((r) => setTimeout(r, 950)); await sim.tick();
-    if (i === 3) { astro.pos = { x: run.target!.x, y: run.target!.y - 2.5 }; astro.path = []; }
-    run = (await call<typeof run>('GET', '/api/gc')).data;
-  }
-  assert.equal(run.state, 'done');
-
-  const me = (await call<null>('GET', '/api/me')).me as unknown as { xp: number; docked: boolean; links: number; verified: string[]; hosting: string[] };
-  assert.ok(me.docked && me.links === 2 && me.verified.length === 1 && me.hosting.length === 1 && me.xp > 1000, JSON.stringify(me));
+  const me = (await call<null>('GET', '/api/me')).me as unknown as { xp: number; cls: string; docked: boolean; links: number; verified: string[]; hosting: string[] };
+  assert.ok(me.docked && me.links === 2 && me.verified.length === 1 && me.hosting.length === 1 && me.xp === 200 + 500 + 50 + 150 + 50 + 50 + 100, JSON.stringify(me));
+  assert.equal(me.cls, 'exhibitor', 'bringing a booth online makes you an exhibitor');
 });

@@ -6,7 +6,7 @@ import { createApp } from './app.js';
 import { buildServices } from './wire.js';
 import { testStores } from './test-db.js';
 import type { Contact, HostCode, HostLead, LevelData, LinkCode, LinkPeek, Me, SectorsView, StationView } from '../shared/types.js';
-import { HOST_WINDOW_MS, SECTOR_TICK_MS } from '../shared/rules.js';
+import { ALL_FEATURES, HOST_WINDOW_MS, SECTOR_TICK_MS } from '../shared/rules.js';
 import { defaultAvatar } from '../shared/avatar.js';
 
 const root = resolve(import.meta.dirname, '..');
@@ -15,7 +15,7 @@ const level = JSON.parse(readFileSync(resolve(root, 'public/data/floor.json'), '
 async function rig() {
   let now = Date.UTC(2026, 8, 23, 2, 5, 0); // 10:05 MYT, show day 1
   const clock = { advance: (ms: number) => { now += ms; }, get now() { return now; } };
-  const services = buildServices({ ...(await testStores()), secret: 'test-secret', level, publicOrigin: 'http://x.test', now: () => now });
+  const services = buildServices({ ...(await testStores()), features: ALL_FEATURES, secret: 'test-secret', level, publicOrigin: 'http://x.test', now: () => now });
   const app = createApp({ ...services, crewPin: '4321', publicOrigin: 'http://x.test', secureCookies: false });
 
   const user = () => {
@@ -32,7 +32,7 @@ async function rig() {
       post: (p: string, b?: unknown) => call('POST', p, b ?? {}),
       me: async () => (await call('GET', '/api/me')).json.me as Me,
       async join(cls: string, name: string, passport = true) {
-        await call('POST', '/api/suit-up', { cls });
+        await call('POST', '/api/start', { role: cls });
         if (passport) {
           const r = await call('POST', '/api/passport', { name, company: `${name} Trading`, role: 'Owner', phone: '+60120000001', email: `${name.toLowerCase().replace(/\W+/g, '.')}@example.com`, showContact: false, consentMarketing: false, consentNotice: true });
           assert.equal(r.status, 200, JSON.stringify(r.json));
@@ -53,7 +53,7 @@ async function rig() {
 
 test('station: claim, rotating host code, verified contact, consented lead, revoke, moderation', async () => {
   const { clock, user, crew } = await rig();
-  const host = await user().join('closer', 'Hana Host'), visitor = await user().join('builder', 'Vik Visitor'), guest = await user().join('creator', 'No Passport', false);
+  const host = await user().join('exhibitor', 'Hana Host'), visitor = await user().join('visitor', 'Vik Visitor'), guest = await user().join('visitor', 'No Passport', false);
 
   assert.equal((await guest.post('/api/station/claim', { stationId: '7C17', company: 'Squatters', offer: '', link: '', color: 0 })).json.code, 'need_passport');
   assert.equal((await host.post('/api/station/claim', { stationId: '8H18B', company: 'Cheeky', offer: '', link: '', color: 0 })).json.code, 'reserved');
@@ -87,12 +87,12 @@ test('station: claim, rotating host code, verified contact, consented lead, revo
 
   r = await visitor.post('/api/stamp', { stationId: '7C17', proof: 'host', code: code.digits });
   assert.equal(r.status, 200, JSON.stringify(r.json));
-  assert.deepEqual(r.json.events.map((e: { action: string; xp: number }) => [e.action, e.xp]), [['stamp', 60], ['verified_contact', 60]], '40 x 1.0 on-site x 1.0 host x 1.5 quiet, then the verified contact');
+  assert.deepEqual(r.json.events.map((e: { action: string; xp: number }) => [e.action, e.xp]), [['scan', 50], ['verified_contact', 0]], 'a real-booth scan is +50; met-in-person is recorded, not paid twice');
   assert.deepEqual(r.json.me.verified, ['7C17']);
   assert.equal((await visitor.post('/api/stamp', { stationId: '7C17', proof: 'host', code: code.digits })).json.code, 'dup');
 
   // a virtual stamp first, then the host code later still earns the verified contact (once)
-  const late = await user().join('strategist', 'Lara Late');
+  const late = await user().join('visitor', 'Lara Late');
   await late.walkTo('7C17');
   assert.equal((await late.post('/api/stamp', { stationId: '7C17', proof: 'virtual' })).json.events[0].action, 'stamp');
   code = (await host.get('/api/host/code?station=7C17')).json.data;
@@ -100,12 +100,12 @@ test('station: claim, rotating host code, verified contact, consented lead, revo
   r = await late.post('/api/stamp', { stationId: '7C17', proof: 'host', code: url });
   assert.deepEqual(r.json.events.map((e: { action: string }) => e.action), ['verified_contact']);
   clock.advance(HOST_WINDOW_MS * 6);
-  const stale = await user().join('creator', 'Stu Stale');
+  const stale = await user().join('visitor', 'Stu Stale');
   assert.equal((await stale.post('/api/stamp', { stationId: '7C17', proof: 'host', code: url })).json.code, 'bad_code', 'an old code stops working');
 
   // consented lead: the host sees exactly the chosen fields
   r = await visitor.post('/api/station/share', { stationId: '7C17', fields: ['email', 'bogus'] });
-  assert.equal(r.json.events[0].xp, 25);
+  assert.equal(r.json.events[0].xp, 10);
   assert.deepEqual(r.json.me.shared, ['7C17']);
   assert.equal((await visitor.post('/api/station/share', { stationId: '7C17', fields: ['name', 'phone'] })).json.events.length, 0, 'changing fields pays nothing extra');
   assert.equal((await visitor.get('/api/host/leads?station=7C17')).status, 403, 'a visitor cannot read the lead list');
@@ -140,7 +140,7 @@ test('station: claim, rotating host code, verified contact, consented lead, revo
 
 test('link-up: peek shows no personal data, each side shares only what they chose, revocable', async () => {
   const { clock, user } = await rig();
-  const a = await user().join('builder', 'Aisyah Rahman'), b = await user().join('closer', 'Ben Tan'), g = await user().join('creator', 'Guest', false);
+  const a = await user().join('visitor', 'Aisyah Rahman'), b = await user().join('exhibitor', 'Ben Tan'), g = await user().join('visitor', 'Guest', false);
 
   assert.equal((await g.post('/api/link/code')).json.code, 'need_passport');
   const code = (await a.post('/api/link/code')).json.data as LinkCode;
@@ -148,14 +148,15 @@ test('link-up: peek shows no personal data, each side shares only what they chos
   assert.equal((await a.post('/api/link', { code: code.code, fields: ['name'] })).json.code, 'self');
 
   const peek = (await b.post('/api/link/peek', { code: code.code })).json.data as LinkPeek;
-  assert.deepEqual(Object.keys(peek).sort(), ['alreadyLinked', 'callsign', 'cls', 'rank', 'shares']);
-  assert.ok(!JSON.stringify(peek).includes('Aisyah'), 'no name before consent');
+  assert.deepEqual(Object.keys(peek).sort(), ['alreadyLinked', 'callsign', 'cls', 'shares']);
+  assert.equal(peek.callsign, 'Aisyah R.', 'the game name they agreed to show: first name and initial');
+  assert.ok(!['Rahman', 'Kedai', 'example.com', '+60'].some((x) => JSON.stringify(peek).includes(x)), 'no surname, company or contact details before consent');
 
   const r = await b.post('/api/link', { code: code.code, fields: ['name', 'phone'] });
   assert.equal(r.status, 200, JSON.stringify(r.json));
   assert.equal(r.json.events[0].xp, 50);
   assert.equal(r.json.me.links, 1);
-  assert.equal((await a.me()).xp, 50 + 200 + 50, 'the person who showed the code is rewarded too');
+  assert.equal((await a.me()).xp, 200 + 50, 'the person who showed the code is rewarded too');
   assert.equal((await b.post('/api/link', { code: code.code, fields: ['name'] })).json.code, 'bad_link', 'one code, one handshake');
 
   const mine = (await b.get('/api/contacts')).json.data as Contact[], theirs = (await a.get('/api/contacts')).json.data as Contact[];
@@ -165,7 +166,7 @@ test('link-up: peek shows no personal data, each side shares only what they chos
   // already linked → refused even with a fresh code; expired code → refused
   const again = (await a.post('/api/link/code')).json.data as LinkCode;
   assert.equal((await b.post('/api/link', { code: again.code, fields: ['name'] })).json.code, 'dup');
-  const c = await user().join('strategist', 'Chen Li');
+  const c = await user().join('visitor', 'Chen Li');
   const old = (await c.post('/api/link/code')).json.data as LinkCode;
   clock.advance(121_000);
   assert.equal((await b.post('/api/link', { code: old.code, fields: ['name'] })).json.code, 'bad_link');
@@ -178,13 +179,13 @@ test('link-up: peek shows no personal data, each side shares only what they chos
   assert.deepEqual(((await a.get('/api/contacts')).json.data as Contact[])[0]!.card, {}, 'B took the card back');
 });
 
-test('avatar: catalog-validated, rank-locked options refused, carried on presence', async () => {
+test('avatar editor (switched off in the simple game): catalog-validated, reward items stay locked, carried on presence', async () => {
   const { user } = await rig();
-  const a = await user().join('creator', 'Ava', false), b = await user().join('builder', 'Bo', false);
-  assert.deepEqual((await a.me()).avatar, defaultAvatar('creator'));
+  const a = await user().join('visitor', 'Ava', false), b = await user().join('visitor', 'Bo', false);
+  assert.deepEqual((await a.me()).avatar, defaultAvatar('visitor'));
 
-  const look = { ...defaultAvatar('creator'), helmet: 3, top: 6, smile: 1 };
-  assert.equal((await a.post('/api/avatar', { spec: { ...look, smile: 4 } })).json.code, 'bad_avatar', 'Heart smile needs Navigator');
+  const look = { ...defaultAvatar('visitor'), helmet: 3, top: 6, smile: 1 };
+  assert.equal((await a.post('/api/avatar', { spec: { ...look, smile: 4 } })).json.code, 'bad_avatar', 'reward items stay locked');
   assert.equal((await a.post('/api/avatar', { spec: { ...look, top: 9 } })).json.code, 'bad_avatar', 'constellation rewards stay locked');
   assert.equal((await a.post('/api/avatar', { spec: { ...look, helmet: 99 } })).json.code, 'bad_avatar');
   assert.equal((await a.post('/api/avatar', { spec: look })).status, 200);
@@ -193,12 +194,12 @@ test('avatar: catalog-validated, rank-locked options refused, carried on presenc
   const s = level.spawns.short;
   await a.post('/api/presence', { x: s.x, y: s.y, h: 0, spawn: true });
   const seen = (await b.post('/api/presence', { x: s.x + 1, y: s.y, h: 0, spawn: true })).json.data.holograms;
-  assert.equal(seen[0].av, '3.0.1.0.6.2.0.2.0');
+  assert.equal(seen[0].av, '3.0.1.1.6.0.0.0.0');
 });
 
 test('crews: influence decides the sector at the tick; active members of the holder are paid', async () => {
   const { clock, user } = await rig();
-  const builder = await user().join('builder', 'B One', false), closer = await user().join('closer', 'C One', false);
+  const builder = await user().join('visitor', 'B One', false), closer = await user().join('exhibitor', 'C One', false);
   await builder.post('/api/presence', { x: level.spawns.short.x, y: level.spawns.short.y, h: 0, spawn: true });
   await closer.post('/api/presence', { x: level.spawns.short.x, y: level.spawns.short.y, h: 0, spawn: true });
 
@@ -209,13 +210,13 @@ test('crews: influence decides the sector at the tick; active members of the hol
   let v = (await builder.get('/api/sectors')).json.data as SectorsView;
   const hall8 = () => v.sectors.find((s) => s.hall === 8)!;
   assert.equal(hall8().holder, null, 'nobody holds a sector before the first tick');
-  assert.ok(hall8().scores.builder > hall8().scores.closer && hall8().scores.closer > 0);
-  assert.equal(v.crewSizes.builder, 1);
+  assert.ok(hall8().scores.visitor > hall8().scores.exhibitor && hall8().scores.exhibitor > 0);
+  assert.equal(v.crewSizes.visitor, 1);
 
   const before = (await builder.me()).xp;
   clock.advance(SECTOR_TICK_MS);
   v = (await closer.get('/api/sectors')).json.data;
-  assert.equal(hall8().holder, 'builder');
+  assert.equal(hall8().holder, 'visitor');
   assert.equal(v.sectors.find((s) => s.hall === 7)!.holder, null);
   assert.equal((await builder.me()).xp, before + 40, 'active member of the holding crew');
   const closerXp = (await closer.me()).xp;
@@ -225,6 +226,6 @@ test('crews: influence decides the sector at the tick; active members of the hol
   assert.equal((await builder.me()).xp, before + 40);
   clock.advance(SECTOR_TICK_MS * 3);
   v = (await closer.get('/api/sectors')).json.data;
-  assert.equal(hall8().holder, 'builder', 'ties and silence leave the previous holder in place');
+  assert.equal(hall8().holder, 'visitor', 'ties and silence leave the previous holder in place');
   assert.equal((await closer.me()).xp, closerXp);
 });

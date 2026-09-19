@@ -59,13 +59,13 @@ export function createApp({ game, stations, social, crews, venue, director, gc, 
     }
     c.set('playerId', id);
     if (c.req.method !== 'GET' && c.req.path !== '/api/presence' && !writeLimit(id)) throw new GameError('rate', 'Slow down a little', 429);
-    if (c.req.method !== 'GET' && (await ops.isBanned(id))) throw new GameError('review', 'This account is under review — please see the crew at Booth 8H18B', 403);
+    if (c.req.method !== 'GET' && (await ops.isBanned(id))) throw new GameError('review', 'This player is under review — please see the crew at Booth 8H18B', 403);
     await next();
   });
   const pid = (c: Context<Vars>) => c.get('playerId');
 
   player.get('/me', (c) => ok(c, null));
-  player.post('/suit-up', async (c) => ok(c, null, await game.suitUp(pid(c), String((await body(c)).cls))));
+  player.post('/start', async (c) => { await game.start(pid(c), String((await body(c)).role)); return ok(c, null); });
   player.post('/avatar', async (c) => { await game.setAvatar(pid(c), (await body(c)).spec); return ok(c, null); });
   player.post('/presence', async (c) => {
     if (!pingLimit(pid(c))) throw new GameError('rate', 'Too many updates', 429);
@@ -75,7 +75,6 @@ export function createApp({ game, stations, social, crews, venue, director, gc, 
   });
   player.post('/stamp', async (c) => ok(c, null, await game.stamp(pid(c), (await body(c)) as never)));
   player.post('/passport', async (c) => { await ops.require('registration'); return ok(c, null, await game.issuePassport(pid(c), (await body(c)) as never)); });
-  player.get('/leaderboard', async (c) => ok(c, await game.leaderboard(pid(c)), [], false));
   player.get('/flags', async (c) => ok(c, await ops.flags(), [], false));
   player.get('/boards', async (c) => { const k = c.req.query('board') ?? 'xp'; if (!['xp', 'today', 'explorer', 'connector', 'stations', 'companies'].includes(k)) throw new GameError('bad_board', 'Unknown board'); return ok(c, await ops.board(k as never, pid(c)), [], false); });
   player.get('/trust', async (c) => ok(c, await ops.trust(pid(c)), [], false));
@@ -114,14 +113,17 @@ export function createApp({ game, stations, social, crews, venue, director, gc, 
   player.post('/venue', async (c) => { const b = await body(c); return ok(c, await venue.checkIn(pid(c), { lat: Number(b.lat), lon: Number(b.lon), acc: Number(b.acc) })); });
   player.post('/hidden', async (c) => { await venue.setHidden(pid(c), (await body(c)).hidden === true); return ok(c, null); });
 
-  /* Mission Director */
+  /* what is special today: the booth of the day, set by the crew */
+  player.get('/today', async (c) => ok(c, { drop: await ops.drop(pid(c)) }, [], false));
+
+  /* Mission Director (switched off) */
   player.get('/missions', async (c) => ok(c, { ...(await director.view(pid(c))), drop: await ops.drop(pid(c)) }, [], false));
-  player.post('/missions/accept', async (c) => { await ops.require('missions'); await director.accept(pid(c), String((await body(c)).id)); return ok(c, await director.view(pid(c)), [], false); });
+  player.post('/missions/accept', async (c) => { await director.accept(pid(c), String((await body(c)).id)); return ok(c, await director.view(pid(c)), [], false); });
   player.post('/missions/abandon', async (c) => { await director.abandon(pid(c)); return ok(c, await director.view(pid(c)), [], false); });
 
   /* Ground Control co-op */
   player.get('/gc', async (c) => ok(c, await gc.view(pid(c)), [], false));
-  player.post('/gc/join', async (c) => { await ops.require('gc'); return ok(c, await gc.join(pid(c)), [], false); });
+  player.post('/gc/join', async (c) => ok(c, await gc.join(pid(c)), [], false));
   player.post('/gc/leave', async (c) => { await gc.leave(pid(c)); return ok(c, await gc.view(pid(c)), [], false); });
   player.post('/gc/waypoint', async (c) => { const b = await body(c); await gc.waypoint(pid(c), Number(b.x), Number(b.y)); return ok(c, await gc.view(pid(c)), [], false); });
 
@@ -160,7 +162,7 @@ export function createApp({ game, stations, social, crews, venue, director, gc, 
   crew.post('/drop', async (c) => { const b = await body(c); await ops.setDrop(b.stationId, b.title, b.bonus); return c.json({ ok: true, data: await ops.drop(null) }); });
   crew.get('/screen', async (c) => {
     const t = game.now(), dots = await game.presence.all(t, venue.hidden);
-    return c.json({ ok: true, data: { dots, online: dots.length, onsite: dots.filter((d) => d.deck).length, totals: await ops.totals(), board: await ops.board('today', null), sectors: await crews.view(), storm: await director.stormView(), drop: await ops.drop(null), joinUrl: publicOrigin } });
+    return c.json({ ok: true, data: { dots, online: dots.length, onsite: dots.filter((d) => d.deck).length, totals: await ops.totals(), board: await ops.board('today', null), booths: await ops.board('stations', null), sectors: await crews.view(), storm: await director.stormView(), drop: await ops.drop(null), joinUrl: publicOrigin } });
   });
   crew.post('/stations/status', async (c) => { const b = await body(c); await stations.crewSetStatus(String(b.stationId), String(b.status)); return c.json({ ok: true, data: null }); });
 

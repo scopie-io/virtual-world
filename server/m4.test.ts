@@ -6,7 +6,7 @@ import { createApp } from './app.js';
 import { buildServices } from './wire.js';
 import { testStores } from './test-db.js';
 import type { BoardRow, HostCode, LevelData, Me, MissionsView, ReviewRow, ScreenView, SectorsView, TeamView, TrustView } from '../shared/types.js';
-import { VENUE_DEFAULT } from '../shared/rules.js';
+import { ALL_FEATURES, VENUE_DEFAULT } from '../shared/rules.js';
 
 const root = resolve(import.meta.dirname, '..');
 const level = JSON.parse(readFileSync(resolve(root, 'public/data/floor.json'), 'utf8')) as LevelData;
@@ -16,7 +16,7 @@ const AT_MITEC = { lat: VENUE_DEFAULT.lat, lon: VENUE_DEFAULT.lon, acc: 20 };
 async function rig() {
   let now = Date.UTC(2026, 8, 23, 2, 5, 0);
   const clock = { advance: (ms: number) => { now += ms; } };
-  const services = buildServices({ ...(await testStores()), secret: 'test-secret', level, publicOrigin: 'http://x.test', now: () => now });
+  const services = buildServices({ ...(await testStores()), features: ALL_FEATURES, secret: 'test-secret', level, publicOrigin: 'http://x.test', now: () => now });
   const app = createApp({ ...services, crewPin: '4321', publicOrigin: 'http://x.test', secureCookies: false });
   const user = () => {
     const jar = new Map<string, string>();
@@ -29,7 +29,7 @@ async function rig() {
       get: (p: string) => call('GET', p), post: (p: string, b?: unknown) => call('POST', p, b ?? {}),
       me: async () => (await call('GET', '/api/me')).json.me as Me,
       async join(cls: string, name?: string) {
-        await call('POST', '/api/suit-up', { cls });
+        await call('POST', '/api/start', { role: cls });
         if (name) assert.equal((await call('POST', '/api/passport', { name, company: `${name} Co`, role: 'Owner', phone: '+60120000001', email: 'a@example.com', showContact: false, consentMarketing: false, consentNotice: true })).status, 200);
         return u;
       },
@@ -42,7 +42,7 @@ async function rig() {
 }
 
 test('three decks: a lift ride is the only legal jump; Level 1 booths stamp, count for their own halls, and get their own offers', async () => {
-  const { clock, user } = await rig(), p = await user().join('builder');
+  const { clock, user } = await rig(), p = await user().join('visitor');
   assert.deepEqual(level.decks.map((d) => d.level).sort(), [1, 2, 3]);
   assert.equal(level.booths.length, new Set(level.booths.map((b) => b.id)).size, 'booth ids are unique across decks');
   assert.ok(level.booths.filter((b) => b.deck === 1).length > 650 && level.booths.filter((b) => b.deck === 3).length > 450);
@@ -65,7 +65,7 @@ test('three decks: a lift ride is the only legal jump; Level 1 booths stamp, cou
 
   const sectors = ((await p.get('/api/sectors')).json.data as SectorsView).sectors;
   assert.deepEqual(sectors.map((s) => s.hall).sort((a, b) => a - b), [2, 3, 4, 6, 7, 8, 9, 10, 11]);
-  assert.ok(sectors.find((s) => s.hall === 3)!.scores.builder > 0 && sectors.find((s) => s.hall === 8)!.scores.builder === 0);
+  assert.ok(sectors.find((s) => s.hall === 3)!.scores.visitor > 0 && sectors.find((s) => s.hall === 8)!.scores.visitor === 0);
 
   const m = (await p.get('/api/missions')).json.data as MissionsView;
   for (const o of m.offers) if (o.target) assert.ok(o.target.y < 0, `${o.title} stays on Level 1 (south of the Level 2 platform)`);
@@ -73,7 +73,7 @@ test('three decks: a lift ride is the only legal jump; Level 1 booths stamp, cou
 
 test('trust: remote play cannot reach the bar; venue + host code + docking does; a teleport attempt costs it', async () => {
   const { clock, user, crew, services } = await rig();
-  const host = await user().join('closer', 'Hana Host'), remote = await user().join('creator', 'Rita Remote'), onsite = await user().join('builder', 'Omar Onsite');
+  const host = await user().join('exhibitor', 'Hana Host'), remote = await user().join('visitor', 'Rita Remote'), onsite = await user().join('visitor', 'Omar Onsite');
   await host.post('/api/station/claim', { stationId: '7C17', company: 'Mamee', offer: '', link: '', color: 0 });
 
   let t = (await remote.get('/api/trust')).json.data as TrustView;
@@ -96,7 +96,7 @@ test('trust: remote play cannot reach the bar; venue + host code + docking does;
   clock.advance(20_000);
   let board = (await remote.get('/api/boards?board=today')).json.data as BoardRow[];
   assert.deepEqual(board.map((r) => r.trusted), board.map((r) => r.sub !== 'Cadet' ? r.trusted : r.trusted)); // shape check
-  assert.equal(board.find((r) => r.trusted)?.value, 60 + 60 + 50 + 200, 'Omar: stamp + verified + suit-up + passport, today');
+  assert.equal(board.find((r) => r.trusted)?.value, 50 + 200, 'Omar: a real-booth scan + the card, today');
   assert.equal((await remote.get('/api/crew/review')).status, 401);
 
   const staff = await crew();
@@ -106,22 +106,22 @@ test('trust: remote play cannot reach the bar; venue + host code + docking does;
   const ledger = (await staff.get(`/api/crew/ledger?callsign=${omar.callsign}`)).json.data as { id: number; action: string; xp: number }[];
   const stampRow = ledger.find((l) => l.action === 'stamp')!;
   await staff.post('/api/crew/void', { id: stampRow.id });
-  assert.equal((await onsite.me()).xp, 50 + 200 + 60, 'the voided stamp no longer counts');
+  assert.equal((await onsite.me()).xp, 200, 'the voided scan no longer counts: only the card is left');
   await staff.post('/api/crew/void', { id: stampRow.id, voided: false });
-  assert.equal((await onsite.me()).xp, 50 + 200 + 60 + 60, 'and can be restored');
+  assert.equal((await onsite.me()).xp, 200 + 50, 'and can be restored');
 
   await staff.post('/api/crew/ban', { callsign: omar.callsign, reason: 'test' });
   clock.advance(20_000);
   board = (await remote.get('/api/boards?board=xp')).json.data;
   assert.ok(!board.some((r) => r.title === omar.callsign), 'banned accounts leave every board');
-  assert.equal((await onsite.post('/api/suit-up', { cls: 'closer' })).json.code, 'review');
+  assert.equal((await onsite.post('/api/suit-up', { cls: 'exhibitor' })).json.code, 'review');
   assert.equal((await onsite.get('/api/me')).status, 200, 'they can still look');
   void services;
 });
 
 test('teams, kill switches, the Daily Drop, and what the big screen is allowed to know', async () => {
   const { clock, user, crew } = await rig();
-  const boss = await user().join('strategist', 'Bea Boss'), mate = await user().join('builder', 'Mo Mate'), guest = await user().join('creator');
+  const boss = await user().join('visitor', 'Bea Boss'), mate = await user().join('visitor', 'Mo Mate'), guest = await user().join('visitor');
   const staff = await crew();
 
   assert.equal((await guest.post('/api/team/create', { name: 'x' })).json.code, 'need_passport');
@@ -129,10 +129,10 @@ test('teams, kill switches, the Daily Drop, and what the big screen is allowed t
   assert.deepEqual([team.name, team.owner, team.members.length], ['Bea Boss Co', true, 1]);
   assert.equal((await mate.post('/api/team/join', { code: 'AAAAAAAA' })).json.code, 'bad_code');
   const joined = (await mate.post('/api/team/join', { code: team.code })).json.data as TeamView;
-  assert.deepEqual([joined.owner, joined.code, joined.members.length, joined.score], [false, null, 2, 500]);
+  assert.deepEqual([joined.owner, joined.code, joined.members.length, joined.score], [false, null, 2, 400]);
   assert.equal((await mate.post('/api/team/create', {})).json.code, 'in_team');
   let co = (await guest.get('/api/boards?board=companies')).json.data as BoardRow[];
-  assert.deepEqual([co[0]!.title, co[0]!.value, co[0]!.trusted], ['Bea Boss Co', 500, false]);
+  assert.deepEqual([co[0]!.title, co[0]!.value, co[0]!.trusted], ['Bea Boss Co', 400, false]);
   await boss.post('/api/team/leave');
   assert.equal((await mate.get('/api/team')).json.data, null, 'the founder leaving dissolves the team');
 
@@ -157,7 +157,8 @@ test('teams, kill switches, the Daily Drop, and what the big screen is allowed t
   await mate.post('/api/venue', AT_MITEC);
   const code = (await boss.get('/api/host/code?station=7C17')).json.data as HostCode;
   const paid = (await mate.post('/api/stamp', { stationId: '7C17', proof: 'host', code: code.digits })).json.events as { action: string; xp: number }[];
-  assert.deepEqual(paid.map((e) => [e.action, e.xp]), [['verified_contact', 60], ['daily_drop', 120]]);
+  assert.deepEqual(paid.map((e) => [e.action, e.xp]), [['verified_contact', 0], ['daily_drop', 120]]);
+  assert.equal((await mate.get('/api/today')).json.data.drop.done, true, 'the simple game reads the booth of the day from /api/today');
   assert.equal(((await mate.get('/api/missions')).json.data as MissionsView).drop?.done, true);
 
   // the big screen: crew only, and it carries positions and totals — never identities

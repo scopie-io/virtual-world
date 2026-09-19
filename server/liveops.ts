@@ -1,10 +1,10 @@
-// Live operations (M4): trust scoring, the boards, crew review tools (void / ban), company teams,
-// kill switches and the Daily Drop. Everything a prize decision or a bad afternoon on the show floor needs.
+// Live operations: the boards, the crew's review tools (trust, void, ban), kill switches and the booth of the day.
+// Company teams are switched off in the simple game (FEATURES.teams). Everything a prize decision or a bad afternoon on the show floor needs.
 import { Game, GameError, cleanText, dayStart, type StampOutcome } from './game.js';
 import { shortCode } from './crypto.js';
 import type { Stations } from './stations.js';
 import type { BoardKind, BoardRow, DailyDrop, FlagKey, ReviewRow, TeamView, TrustView, XpEvent } from '../shared/types.js';
-import { FLAG_KEYS, TEAM_MAX, TEAM_SCORERS, TRUST_MIN, TRUST_W, rankFor, type PlayerClass } from '../shared/rules.js';
+import { FLAG_KEYS, TEAM_MAX, TEAM_SCORERS, TRUST_MIN, TRUST_W, type Role } from '../shared/rules.js';
 
 export class LiveOps {
   private flagCache: { at: number; v: Record<FlagKey, boolean> } | null = null;
@@ -88,7 +88,7 @@ export class LiveOps {
     const d0 = dayStart(t);
     if (kind === 'stations') {
       const mine = await this.stationsSvc.ranked(20);
-      return mine.map((s) => ({ kind: 'station' as const, title: s.company, sub: `Booth ${s.id} · level ${s.level}${s.hosted ? ' · host here now' : ''}`, value: s.sxp, unit: 'SXP' }));
+      return mine.map((s) => ({ kind: 'station' as const, title: s.company, sub: `Booth ${s.id}${s.hosted ? ' · at the counter now' : ''}`, value: s.stamps, unit: 'visits' })).sort((a, b) => b.value - a.value);
     }
     if (kind === 'companies') {
       const teams = await this.g.db.all<{ owner_id: string; name: string }>('SELECT owner_id, name FROM teams');
@@ -106,11 +106,11 @@ export class LiveOps {
       explorer: `SELECT player_id AS id, COUNT(*) AS v FROM stamps WHERE created_at >= ${d0} AND player_id NOT IN (SELECT player_id FROM bans) GROUP BY player_id ORDER BY v DESC, MAX(created_at) LIMIT 25`,
       connector: `SELECT id, COUNT(*) AS v FROM (SELECT a_id AS id, created_at FROM links UNION ALL SELECT b_id, created_at FROM links) WHERE created_at >= ${d0} AND id NOT IN (SELECT player_id FROM bans) GROUP BY id ORDER BY v DESC LIMIT 25`,
     };
-    const unit = { xp: 'XP', today: 'XP today', explorer: 'stamps today', connector: 'links today' }[kind];
+    const unit = { xp: 'points', today: 'points today', explorer: 'stamps today', connector: 'swaps today' }[kind];
     const out: BoardRow[] = [];
     for (const r of await this.g.db.all<{ id: string; v: number }>(sql[kind])) {
-      const p = await this.g.player(r.id), pass = !!(await this.g.passportOf(r.id)), tr = await this.trust(r.id);
-      out.push({ kind: 'player', title: p.callsign, cls: p.cls as PlayerClass | null, sub: rankFor(p.xp, { passport: pass, docked: p.docked_at != null }).rank.label, value: r.v, unit, trusted: tr.trusted });
+      const p = await this.g.player(r.id), tr = await this.trust(r.id), booths = (await this.g.db.get<{ n: number }>('SELECT COUNT(*) AS n FROM stamps WHERE player_id = ?', [r.id]))?.n ?? 0;
+      out.push({ kind: 'player', title: p.callsign, cls: p.cls as Role | null, sub: `${booths} booth${booths === 1 ? '' : 's'}${p.docked_at != null ? ' · mission complete at 8H18B' : ''}`, value: r.v, unit, trusted: tr.trusted });
     }
     return out;
   }
@@ -159,6 +159,7 @@ export class LiveOps {
   /* ---------------- company teams ---------------- */
 
   async team(id: string): Promise<TeamView | null> {
+    if (!this.g.features.teams) return null;
     const own = await this.g.db.get<{ owner_id: string; name: string; code: string }>('SELECT owner_id, name, code FROM teams WHERE owner_id = ? OR owner_id = (SELECT owner_id FROM team_members WHERE player_id = ?)', [id, id]);
     if (!own) return null;
     const members = await this.g.db.all<{ callsign: string; xp: number; id: string }>('SELECT pl.id, pl.callsign, pl.xp FROM players pl WHERE pl.id = ? OR pl.id IN (SELECT player_id FROM team_members WHERE owner_id = ?) ORDER BY pl.xp DESC', [own.owner_id, own.owner_id]);
@@ -166,6 +167,7 @@ export class LiveOps {
   }
 
   async createTeam(id: string, nameIn: unknown): Promise<TeamView> {
+    if (!this.g.features.teams) throw new GameError('off', 'Not part of this game', 404);
     const pass = await this.g.requirePassport(id);
     if (await this.team(id)) throw new GameError('in_team', 'You are already in a team — leave it first');
     const name = cleanText(nameIn, 60) || pass.company;
@@ -176,6 +178,7 @@ export class LiveOps {
   }
 
   async joinTeam(id: string, codeIn: unknown): Promise<TeamView> {
+    if (!this.g.features.teams) throw new GameError('off', 'Not part of this game', 404);
     await this.g.requirePassport(id);
     if (await this.team(id)) throw new GameError('in_team', 'You are already in a team — leave it first');
     const code = String(codeIn ?? '').trim().toUpperCase(), tm = /^[A-Z2-9]{8}$/.test(code) ? await this.g.db.get<{ owner_id: string }>('SELECT owner_id FROM teams WHERE code = ?', [code]) : undefined;

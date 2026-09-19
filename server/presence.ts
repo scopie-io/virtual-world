@@ -27,7 +27,7 @@ function tooFast(prev: { x: number; y: number; deck: boolean; t: number }, p: Ho
 }
 function publicView(e: Hologram, d: number): Hologram & { d: number } {
   const q = e.deck ? 1.5 : 0;
-  return { id: e.id.slice(0, 8), callsign: e.callsign, cls: e.cls, x: q ? Math.round(e.x / q) * q : e.x, y: q ? Math.round(e.y / q) * q : e.y, h: e.h, rank: e.rank, av: e.av, deck: e.deck, sigma: e.sigma, d };
+  return { id: e.id.slice(0, 8), callsign: e.callsign, cls: e.cls, x: q ? Math.round(e.x / q) * q : e.x, y: q ? Math.round(e.y / q) * q : e.y, h: e.h, av: e.av, deck: e.deck, sigma: e.sigma, d };
 }
 const nearest = (list: (Hologram & { d: number })[], limit: number) => list.sort((a, b) => a.d - b.d).slice(0, limit).map(({ d: _d, ...h }) => h);
 
@@ -65,7 +65,7 @@ export class PresenceStore implements Presence {
   async online(now: number) { let n = 0; for (const e of this.map.values()) if (now - e.t <= FRESH_MS) n++; return n; }
 }
 
-interface Row { player_id: string; callsign: string; cls: Hologram['cls']; rank: string; av: string; x: number; y: number; h: number; deck: number; sigma: number; t: number }
+interface Row { player_id: string; callsign: string; cls: Hologram['cls']; av: string; x: number; y: number; h: number; deck: number; sigma: number; t: number }
 const NOT_HIDDEN = 'player_id NOT IN (SELECT player_id FROM player_flags WHERE hidden = 1)';
 
 /**
@@ -82,7 +82,7 @@ export class DbPresence implements Presence {
       `INSERT INTO presence (player_id, callsign, cls, rank, av, x, y, h, deck, sigma, t) VALUES (?,?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(player_id) DO UPDATE SET callsign = excluded.callsign, cls = excluded.cls, rank = excluded.rank, av = excluded.av,
          x = excluded.x, y = excluded.y, h = excluded.h, deck = excluded.deck, sigma = excluded.sigma, t = excluded.t`,
-      [p.id, p.callsign, p.cls, p.rank, p.av, p.x, p.y, p.h, p.deck ? 1 : 0, p.sigma, now]);
+      [p.id, p.callsign, p.cls, '', p.av, p.x, p.y, p.h, p.deck ? 1 : 0, p.sigma, now]);
   }
   async update(p: Hologram, now: number, isSpawn: boolean) {
     const prev = await this.db.get<Row>('SELECT x, y, deck, t FROM presence WHERE player_id = ?', [p.id]);
@@ -101,7 +101,7 @@ export class DbPresence implements Presence {
   }
   async near(id: string, x: number, y: number, now: number, _hidden: ReadonlySet<string>, radius = 90, limit = 60) {
     const rows = await this.db.all<Row>(`SELECT * FROM presence WHERE t >= ? AND player_id != ? AND x BETWEEN ? AND ? AND y BETWEEN ? AND ? AND ${NOT_HIDDEN} LIMIT 400`, [now - FRESH_MS, id, x - radius, x + radius, y - radius, y + radius]);
-    const out = rows.map((e) => publicView({ id: e.player_id, callsign: e.callsign, cls: e.cls, rank: e.rank, av: e.av, x: e.x, y: e.y, h: e.h, deck: e.deck === 1, sigma: e.sigma }, Math.hypot(e.x - x, e.y - y))).filter((e) => e.d <= radius);
+    const out = rows.map((e) => publicView({ id: e.player_id, callsign: e.callsign, cls: e.cls, av: e.av, x: e.x, y: e.y, h: e.h, deck: e.deck === 1, sigma: e.sigma }, Math.hypot(e.x - x, e.y - y))).filter((e) => e.d <= radius);
     return nearest(out, limit);
   }
   async all(now: number, _hidden: ReadonlySet<string>) {

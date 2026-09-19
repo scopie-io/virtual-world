@@ -1,3 +1,4 @@
+// Switched off in the simple game (FEATURES.director).
 // The Mission Director (Systems doc §10): reads the live floor and hands each player something worth doing now.
 // Offers are a choice of three, never a draw. Signal Storms pull traffic into the quietest zone.
 import { Game, GameError, type StampOutcome } from './game.js';
@@ -5,7 +6,7 @@ import type { Stations } from './stations.js';
 import type { Venue } from './venue.js';
 import type { Booth, HallRect, MissionView, MissionsView, StormView, XpEvent } from '../shared/types.js';
 import {
-  DIRECTOR_W, INFLUENCE_PRESENCE, MISSION_INFLUENCE, MISSION_INFO, MISSION_OFFER_TTL_MS, PRESENCE_MULT, STAMP_RADIUS_M, STORM_GAP_MS, STORM_MS, STORM_MULT,
+  DIRECTOR_W, INFLUENCE_PRESENCE, MISSION_INFLUENCE, MISSION_INFO, MISSION_OFFER_TTL_MS, REMOTE_SHARE, STAMP_RADIUS_M, STORM_GAP_MS, STORM_MS, STORM_MULT,
   type MissionTemplate,
 } from '../shared/rules.js';
 import type { Stmt } from './db/types.js';
@@ -112,6 +113,7 @@ export class Director {
   }
 
   async view(id: string): Promise<MissionsView> {
+    if (!this.g.features.director) return { active: null, offers: [], storm: null, darkVisitors: {} };
     const t = this.g.now(), active = await this.activeOf(id, t);
     const claimed = new Map((await this.stationsSvc.list()).map((s) => [s.id, s.company]));
     let offers: Row[] = [];
@@ -135,6 +137,7 @@ export class Director {
   }
 
   async accept(id: string, missionId: string): Promise<void> {
+    if (!this.g.features.director) throw new GameError('off', 'Not part of this game', 404);
     const t = this.g.now();
     if (await this.activeOf(id, t)) throw new GameError('busy', 'Finish or abandon your current mission first');
     const r = await this.g.db.get<Row>("SELECT * FROM missions WHERE id = ? AND player_id = ? AND state = 'offered'", [String(missionId), id]);
@@ -161,7 +164,7 @@ export class Director {
       r.progress = JSON.stringify(pr);
       return [];
     }
-    const presence = pr.onsite ? 'onsite' : 'remote', xp = Math.max(5, Math.round(r.xp * PRESENCE_MULT[presence]));
+    const presence = pr.onsite ? 'onsite' : 'remote', xp = Math.max(5, Math.round(r.xp * (pr.onsite ? 1 : REMOTE_SHARE)));
     await this.g.db.batch([
       ["UPDATE missions SET state = 'done', progress = ?, done_at = ? WHERE id = ?", [JSON.stringify(pr), t, r.id]],
       ...this.g.award(r.player_id, 'mission', xp, r.template, { presence }, t),
@@ -172,6 +175,7 @@ export class Director {
   }
 
   async afterStamp(o: StampOutcome): Promise<XpEvent[]> {
+    if (!this.g.features.director) return [];
     const r = await this.activeOf(o.id, o.t); if (!r) return [];
     const p = JSON.parse(r.params) as Params, pr = JSON.parse(r.progress) as Progress, onsite = o.presence === 'onsite';
     if (r.template === 'survey' && o.newStamp && o.station.hall === p.hall) { pr.n = (pr.n ?? 0) + 1; pr.onsite &&= onsite; return this.advance(r, pr, pr.n >= (pr.need ?? 3), o.cls, o.station.hall, o.t); }
@@ -182,6 +186,7 @@ export class Director {
 
   /** Walk-up progress: crate pickups and deliveries, and visits to dark stations. */
   async afterPing(o: { id: string; x: number; y: number; deck: boolean; t: number }): Promise<XpEvent[]> {
+    if (!this.g.features.director) return [];
     const r = await this.activeOf(o.id, o.t); if (!r || (r.template !== 'supply' && r.template !== 'dark_sector')) return [];
     const p = JSON.parse(r.params) as Params, pr = JSON.parse(r.progress) as Progress, near = (b?: Booth) => !!b && Math.hypot(b.x - o.x, b.y - o.y) <= STAMP_RADIUS_M;
     const cls = (await this.g.player(o.id)).cls;
@@ -220,6 +225,7 @@ export class Director {
 
   /** Lazy and deterministic: when no storm is running and the gap has passed, the quietest zone gets one. */
   private async storm(t: number): Promise<(StormView & { endsAt: number }) | null> {
+    if (!this.g.features.director) return null;
     if (t - this.stormCache.at < 15_000 && (!this.stormCache.storm || this.stormCache.storm.endsAt > t)) return this.stormCache.storm;
     const last = await this.g.db.get<{ zone: string; x0: number; y0: number; x1: number; y1: number; starts_at: number; ends_at: number }>('SELECT * FROM storms ORDER BY ends_at DESC LIMIT 1');
     let row = last && last.ends_at > t ? last : null;

@@ -1,11 +1,12 @@
-// Crews and sector control (Systems doc §8.1). Deterministic and effort-based: no chance anywhere.
+// Sector control — switched off in the simple game (FEATURES.sectors). The two roles contest each hall;
+// deterministic and effort-based: no chance anywhere.
 import { Game } from './game.js';
 import type { SectorState, SectorsView } from '../shared/types.js';
-import { BASE_XP, CLASSES, INFLUENCE_TAU_MS, SECTOR_TICK_MS, type PlayerClass } from '../shared/rules.js';
+import { INFLUENCE_TAU_MS, ROLES as CLASSES, SECTOR_HELD_XP, SECTOR_TICK_MS, type Role as PlayerClass } from '../shared/rules.js';
 import type { Stmt } from './db/types.js';
 
 type Scores = Record<PlayerClass, number>;
-const zero = (): Scores => ({ builder: 0, strategist: 0, closer: 0, creator: 0 });
+const zero = (): Scores => ({ visitor: 0, exhibitor: 0 });
 
 export class Crews {
   private cache: { at: number; view: SectorsView | null } = { at: -1e9, view: null };
@@ -42,6 +43,7 @@ export class Crews {
    * Idempotent: the (tick, hall) primary key makes a repeated settle a no-op.
    */
   async settle(): Promise<void> {
+    if (!this.g.features.sectors) return;
     if (this.ticking) return this.ticking;
     this.ticking = this.settleNow().finally(() => { this.ticking = null; });
     return this.ticking;
@@ -62,7 +64,7 @@ export class Crews {
         const before = prev.get(hall) ?? null;
         const holder = leaders.length === 0 ? before : leaders.length === 1 ? leaders[0]! : before && leaders.includes(before) ? before : leaders[0]!; // ties → previous holder keeps it
         stmts.push(['INSERT INTO sector_ticks (tick, hall, holder, scores, created_at) VALUES (?,?,?,?,?)', [tick, hall, holder, JSON.stringify(scores), now]]);
-        if (holder && best > 0) for (const pid of active.get(holder)!) stmts.push(...this.g.award(pid, 'sector_held', BASE_XP.sector_held, `hall:${hall}`, { tick }, now));
+        if (holder && best > 0) for (const pid of active.get(holder)!) stmts.push(...this.g.award(pid, 'sector_held', SECTOR_HELD_XP, `hall:${hall}`, { tick }, now));
       }
       try { await this.g.db.batch(stmts); }
       catch (e) { if (!(await this.g.db.get('SELECT 1 AS x FROM sector_ticks WHERE tick = ?', [tick]))) throw e; } // someone else settled it first

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Booth, GcView, LevelData, SectorState, StationView, StormView } from '../../shared/types';
 import { Astronaut } from './astronaut';
-import { CREW_INFO } from '../../shared/rules';
+import { ROLE_INFO } from '../../shared/rules';
 import { defaultAvatar } from '../../shared/avatar';
 
 // Floor-plan metres → world. +x east, +y north ⇒ world +x east, −z north.
@@ -269,7 +269,7 @@ export class World {
         toWorld((e.x0 + e.x1) / 2, (e.y0 + e.y1) / 2, 0.03, plane.position); this.scene.add(plane); this.sectorPlanes.set(s.hall, plane);
       }
       const m = plane.material as THREE.MeshBasicMaterial;
-      if (s.holder) { m.color.set(CREW_INFO[s.holder].color); m.opacity = 0.11; } else m.opacity = 0;
+      if (s.holder) { m.color.set(ROLE_INFO[s.holder].color); m.opacity = 0.11; } else m.opacity = 0;
     }
   }
 
@@ -307,12 +307,13 @@ export class World {
     X.add(bar(0x3aa8ff, 0x1d7be0, Math.PI / 5), bar(0xffc629, 0xd99a00, -Math.PI / 5)); X.position.y = 10.5;
     const guide = new Astronaut({ spec: { ...defaultAvatar(null), top: 5, bottom: 4 } }); guide.group.scale.setScalar(1.5); guide.group.position.set(0, 9.2, 1.2); guide.group.rotation.set(0.2, -Math.PI / 2, 0.35);
     const rings = [0, 1, 2].map(() => { const r = new THREE.Mesh(new THREE.RingGeometry(0.96, 1, 48), new THREE.MeshBasicMaterial({ color: 0xffc629, transparent: true, side: THREE.DoubleSide, depthWrite: false })); r.rotation.x = -Math.PI / 2; r.position.y = 0.22; return r; });
-    const crew = (['closer', 'strategist', 'creator'] as const).map((k, i) => {
-      const a = new Astronaut({ spec: defaultAvatar(k) }); a.group.position.set([-0.2, 0.55, -0.4][i]!, 0.18, [-0.85, 0.2, 0.95][i]!); a.group.rotation.y = -Math.PI / 2 + (i - 1) * 0.35; a.group.scale.setScalar(0.95); return a;
+    // our booth crew, dressed like the three astronauts on the backdrop
+    const crew = [{ top: 2, carry: 3 }, { top: 1, bottom: 1 }, { top: 3, bottom: 2, carry: 2 }].map((look, i) => {
+      const a = new Astronaut({ spec: { ...defaultAvatar(null), ear: 0, ...look } }); a.group.position.set([-0.2, 0.55, -0.4][i]!, 0.18, [-0.85, 0.2, 0.95][i]!); a.group.rotation.y = -Math.PI / 2 + (i - 1) * 0.35; a.group.scale.setScalar(0.95); return a;
     });
     hero.add(beam, core, X, guide.group, ...rings, ...crew.map((c) => c.group));
     this.heroBits = { X, guide, rings, crew };
-    this.labels.push({ text: '✕  Launch Pad · ' + this.level.hero.id, pos: this.heroPos.clone().setY(15.5), kind: 'hero' });
+    this.labels.push({ text: '✕  The X · Lean X Digital · ' + this.level.hero.id, pos: this.heroPos.clone().setY(15.5), kind: 'hero' });
   }
 
   update(t: number, dt: number) {

@@ -1,26 +1,25 @@
 // The demo world. With no backend configured the real game server runs inside the browser (see sw.ts); this file
-// fills it with life so every M1–M4 system has something to show: exhibitors hosting stations, visitors walking the
-// decks and stamping, links, company teams, sector control, a Daily Drop, a Signal Storm, one account worth reviewing —
-// plus partners for the things one person cannot do alone (Link-up, Ground Control, visitors to the station you host).
+// fills it with life: exhibitors with booths online, visitors walking the three levels and stamping, cards left and
+// swapped, a booth of the day, one player worth reviewing — plus the people a single tester cannot be: someone to swap
+// cards with, and visitors for the booth you bring online.
 //
-// Everything goes through the same services real players use, so XP, the ledger, boards and trust stay consistent.
+// Everything goes through the same services real players use, so points, the history, the board and trust stay consistent.
 import type { Services } from '../../server/wire';
 import { dayStart } from '../../server/game';
 import type { Booth, Hologram, LevelData } from '../../shared/types';
-import { CLASSES, HOST_WINDOW_MS, STORM_GAP_MS, VENUE_DEFAULT, type PlayerClass, type ShareField } from '../../shared/rules';
-import { CATALOG, SLOTS, defaultAvatar, isUnlocked, type AvatarSpec, type Option } from '../../shared/avatar';
+import { HOST_WINDOW_MS, VENUE_DEFAULT, type ShareField } from '../../shared/rules';
 import { NavGrid, type P2 } from '../game/nav';
 
 export const DEMO_CREW_PIN = '2026';
-type Kind = 'host' | 'onsite' | 'remote' | 'gcAstro' | 'gcGround' | 'suspect';
+type Kind = 'host' | 'onsite' | 'remote' | 'suspect';
 interface RosterEntry { id: string; kind: Kind; deck: number; station?: string; hosting?: boolean; passport: boolean }
 interface Bot extends RosterEntry {
   pos: P2; h: number; path: P2[]; speed: number; wait: number; target: Booth | null;
   base: Omit<Hologram, 'x' | 'y' | 'h' | 'deck' | 'sigma'> | null; baseAt: number;
-  /** a job that overrides wandering: visit a player's station, or fly a Ground Control run */
-  job: { type: 'visit'; station: string } | { type: 'gc'; goalKey: string } | null;
+  /** a job that overrides wandering: visit the booth a real player brought online */
+  job: { type: 'visit'; station: string } | null;
 }
-export interface DemoState { version: number; crewPin: string; teams: { name: string; code: string }[]; pendingStation: string | null; hostedNear: { id: string; name: string }[]; drop: string | null; bots: number }
+export interface DemoState { version: number; crewPin: string; pendingStation: string | null; hostedNear: { id: string; name: string }[]; drop: string | null; bots: number }
 
 const PEOPLE = ['Aisyah Rahman', 'Daniel Lim', 'Nurul Huda', 'Arif Hakimi', 'Mei Ling Tan', 'Farid Ismail', 'Siti Khadijah', 'Kumar Raj', 'Hannah Yusof', 'Amirul Zaki', 'Wei Jie Ong', 'Zara Malik', 'Irfan Shah', 'Priya Nair', 'Hafiz Rosli', 'Sofia Azman',
   'Jason Wong', 'Liyana Karim', 'Omar Siddiq', 'Yasmin Idris', 'Adam Fikri', 'Chloe Teo', 'Rashid Noor', 'Amina Yusuf', 'Bilal Ahmed', 'Dina Salleh', 'Ethan Chua', 'Fatin Nabila', 'Ghazali Musa', 'Imran Latif', 'Jamilah Osman', 'Khairul Anwar',
@@ -60,12 +59,12 @@ export class DemoSim {
 
   /** Builds a few hours of history. `clock.offset` lets the services believe it is earlier; the caller resets it to 0 afterwards. */
   async seed(clock: { offset: number }): Promise<void> {
-    const { game, stations, social, crews, venue, ops } = this.s, r = this.rand, real = Date.now();
+    const { game, stations, social, venue, ops } = this.s, r = this.rand, real = Date.now();
     const span = 4.5 * 3600_000; let t = real - span; const at = (ms: number) => { t = ms; clock.offset = t - Date.now(); };
     const pickOf = <T,>(a: T[]) => a[Math.floor(r() * a.length)]!;
     at(t);
 
-    // --- who: exhibitors hosting stations, visitors on the floor, visitors at home, two co-op partners, one account to review
+    // --- who: exhibitors with booths online, visitors on the floor, visitors at home, one player to review
     const hero = this.level.hero, d2 = (this.byDeck.get(2) ?? []).filter((b) => b.name).sort((a, b) => Math.hypot(a.x - hero.x, a.y - hero.y) - Math.hypot(b.x - hero.x, b.y - hero.y));
     const uniqueName = <T extends { name: string }>(list: T[]) => [...new Map(list.map((b) => [b.name.toLowerCase(), b])).values()]; // some exhibitors have two booths
     const named = (deck: number) => (this.byDeck.get(deck) ?? []).filter((b) => b.name).sort((a, b) => a.id.localeCompare(b.id));
@@ -75,12 +74,12 @@ export class DemoSim {
       ...hostBooths.map((b) => ({ kind: 'host' as const, deck: b.deck, booth: b })),
       ...[2, 2, 2, 2, 2, 2, 2, 1, 1, 3].map((deck) => ({ kind: 'onsite' as const, deck })),
       ...[2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 3, 3].map((deck) => ({ kind: 'remote' as const, deck })),
-      { kind: 'gcAstro', deck: 2 }, { kind: 'gcGround', deck: 2 }, { kind: 'suspect', deck: 2 },
+      { kind: 'suspect', deck: 2 },
     ];
     const roster: RosterEntry[] = [];
     for (const [i, p] of plan.entries()) {
-      const id = await game.createGuest(), cls = CLASSES[i % CLASSES.length]!, passport = p.kind !== 'remote' || r() < 0.75;
-      await game.suitUp(id, cls); await game.setAvatar(id, this.look(cls));
+      const id = await game.createGuest(), passport = p.kind !== 'remote' || r() < 0.75;
+      await game.start(id, p.kind === 'host' ? 'exhibitor' : 'visitor');
       const company = p.booth ? p.booth.name : `${COMPANIES[i % COMPANIES.length]} (demo)`;
       if (passport) await game.issuePassport(id, { name: PEOPLE[i % PEOPLE.length]!, company, role: pickOf(ROLES), phone: `+60110000${String(1000 + i)}`, email: `visitor${i + 1}@example.com`, showContact: true, consentMarketing: r() < 0.6, consentNotice: true });
       roster.push({ id, kind: p.kind, deck: p.deck, station: p.booth?.id, hosting: p.booth ? i % 3 !== 2 : undefined, passport });
@@ -98,21 +97,13 @@ export class DemoSim {
     }
     const pending = hosts[pendingAt]?.station ?? null;
 
-    // --- three company teams
-    const teams: { name: string; code: string }[] = [];
-    for (const [i, owner] of hosts.slice(0, 3).entries()) {
-      const tv = await ops.createTeam(owner.id, game.stations.get(owner.station!)!.name);
-      if (tv.code) teams.push({ name: tv.name, code: tv.code });
-      for (const m of roster.filter((b) => b.passport && b.kind !== 'host').slice(i * 4, i * 4 + 3)) await quiet(() => ops.joinTeam(m.id, tv.code));
-    }
-
     // --- a few hours on the floor: stamps (virtual / beacon / host code), card shares, links, sector ticks
     const walkers = roster.filter((b) => b.kind === 'onsite' || b.kind === 'remote' || b.kind === 'suspect'), live = new Map(hosts.map((h) => [h.station!, h]));
     // "Today" boards count from midnight (MYT). Opened in the small hours, most of the history belongs to yesterday —
     // so the last part of it is squeezed into today, however short today is, and the boards are never empty.
     const N = 330, end = real - 60_000, day0 = dayStart(real), spread = (a: number, b: number, k: number) => Array.from({ length: k }, (_, i) => a + ((b - a) * (i + 1)) / k);
     const times = day0 <= t ? spread(t, end, N) : [...spread(t, day0 - 1000, Math.round(N * 0.55)), ...spread(Math.min(day0 + 2000, end), end, N - Math.round(N * 0.55))];
-    let lastTickAt = t, n = 0;
+    let n = 0;
     for (const when of times) {
       at(Math.max(when, t + 50)); n++;
       const suspect = walkers.find((w) => w.kind === 'suspect')!; // plays suspiciously often, and sometimes from impossible places
@@ -131,29 +122,21 @@ export class DemoSim {
         const code = await quiet(() => social.linkCode(a.id)); if (code) await quiet(() => social.link(c.id, code.code, SHARE));
       }
       if (bot.kind === 'suspect' && n % 21 === 0) await ops.speedFlag(bot.id, 'to 188,61 (demo: jumped across the hall)');
-      if (t - lastTickAt > 30 * 60_000) { lastTickAt = t; await crews.view(); }
     }
 
     // --- some visitors already made it real at 8H18B
-    for (const b of roster.filter((x) => (x.kind === 'onsite' || x.kind === 'gcAstro') && x.passport).slice(0, 7)) { const me = await game.me(b.id); if (me.ticket) await quiet(() => game.crewDock(me.ticket!.code)); }
+    for (const b of roster.filter((x) => x.kind === 'onsite' && x.passport).slice(0, 7)) { const me = await game.me(b.id); if (me.ticket) await quiet(() => game.crewDock(me.ticket!.code)); }
 
-    // --- now: today's drop at a hosted station near the Launch Pad, and a fresh Signal Storm
+    // --- now: the booth of the day, next to the X
     at(real); clock.offset = 0;
     const dropAt = hosts.find((h) => h.hosting)!.station!;
     await ops.setDrop(dropAt, 'Say hello at the counter', 150);
-    await game.db.run('DELETE FROM storms WHERE ends_at > ?', [real - STORM_GAP_MS]);
-    const state: DemoState = { version: this.version, crewPin: DEMO_CREW_PIN, teams, pendingStation: pending, hostedNear: hosts.filter((h) => h.hosting).slice(0, 3).map((h) => ({ id: h.station!, name: game.stations.get(h.station!)!.name })), drop: dropAt, bots: roster.length };
+    const state: DemoState = { version: this.version, crewPin: DEMO_CREW_PIN, pendingStation: pending, hostedNear: hosts.filter((h) => h.hosting).slice(0, 3).map((h) => ({ id: h.station!, name: game.stations.get(h.station!)!.name })), drop: dropAt, bots: roster.length };
     await game.db.batch([
       ['INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', ['demo:roster', JSON.stringify(roster)]],
       ['INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', ['demo:state', JSON.stringify(state)]],
       ['INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', ['demo:version', String(this.version)]],
     ]);
-  }
-
-  private look(cls: PlayerClass): AvatarSpec {
-    const a = { ...defaultAvatar(cls) };
-    for (const s of SLOTS) { if (s === 'carry' && this.rand() < 0.5) continue; const opts = (CATALOG[s] as Option[]).map((o, i) => ({ o, i })).filter((x) => isUnlocked(x.o, 0)); a[s] = opts[Math.floor(this.rand() * opts.length)]!.i; }
-    return a;
   }
 
   private pickBooth(deck: number, prefer: string[] | null): Booth {
@@ -169,15 +152,13 @@ export class DemoSim {
     const row = await this.s.game.db.get<{ value: string }>("SELECT value FROM settings WHERE key = 'demo:roster'");
     const roster = row ? (JSON.parse(row.value) as RosterEntry[]) : [];
     this.botIds = new Set(roster.map((b) => b.id));
-    this.bots = roster.filter((b) => b.kind !== 'gcGround').map((b) => {
+    this.bots = roster.map((b) => {
       const home = b.station ? this.s.game.stations.get(b.station)! : this.pickBooth(b.deck, null);
       const pos = this.nav.nearestWalkable(home.x, home.y) ?? { x: home.x, y: home.y };
       return { ...b, pos, h: this.rand() * 6.28, path: [], speed: b.kind === 'remote' || b.kind === 'suspect' ? 3.2 + this.rand() * 1.8 : 1.1 + this.rand() * 0.5, wait: this.rand() * 12, target: null, base: null, baseAt: 0, job: null };
     });
-    this.groundBot = roster.find((b) => b.kind === 'gcGround')?.id ?? null;
     this.lastTick = 0;
   }
-  private groundBot: string | null = null;
 
   isBot(id: string) { return this.botIds.has(id); }
 
@@ -194,12 +175,12 @@ export class DemoSim {
     try {
       if (t - this.every.venue > 15 * 60_000) { this.every.venue = t; for (const b of this.bots) if (this.onsite(b)) await this.s.venue.checkIn(b.id, MITEC); }
       if (t - this.every.hosts > 20_000) { this.every.hosts = t; for (const b of this.bots) if (b.kind === 'host' && b.hosting) await quiet(() => this.s.stations.hostCode(b.id, b.station!)); }
-      if (t - this.every.players > 3000) { this.every.players = t; await this.groundControl(t); await this.sendVisitors(t); }
+      if (t - this.every.players > 3000) { this.every.players = t; await this.sendVisitors(t); }
       for (const b of this.bots) await this.step(b, t, dt);
     } catch (e) { console.warn('[demo] tick', e); } finally { this.busy = false; }
   }
 
-  private onsite(b: RosterEntry) { return b.kind === 'host' || b.kind === 'onsite' || b.kind === 'gcAstro'; }
+  private onsite(b: RosterEntry) { return b.kind === 'host' || b.kind === 'onsite'; }
 
   private async step(b: Bot, t: number, dt: number): Promise<void> {
     if (b.kind !== 'host') {
@@ -208,7 +189,7 @@ export class DemoSim {
       else this.walk(b, dt);
     } else if (this.rand() < 0.04) b.h += (this.rand() - 0.5) * 1.2;
 
-    if (!b.base || t - b.baseAt > 60_000) { const h = await this.s.game.hologramOf(b.id, { x: 0, y: 0, h: 0, deck: false, sigma: 0 }); b.base = { id: h.id, callsign: h.callsign, cls: h.cls, rank: h.rank, av: h.av }; b.baseAt = t; }
+    if (!b.base || t - b.baseAt > 60_000) { const h = await this.s.game.hologramOf(b.id, { x: 0, y: 0, h: 0, deck: false, sigma: 0 }); b.base = { id: h.id, callsign: h.callsign, cls: h.cls, av: h.av }; b.baseAt = t; }
     const deck = this.onsite(b);
     let moved = await this.s.game.presence.update({ ...b.base, x: +b.pos.x.toFixed(2), y: +b.pos.y.toFixed(2), h: +b.h.toFixed(2), deck, sigma: deck ? 2 : 0 }, t, false);
     if (moved == null) { // the server refused an implausible jump: exactly what a teleporting client looks like
@@ -239,12 +220,11 @@ export class DemoSim {
   /** Reached the end of a path (or has none yet): do what the bot came for, then choose where to go next. */
   private async arrive(b: Bot, t: number): Promise<void> {
     const { game, stations } = this.s;
-    if (b.job?.type === 'gc') return; // Ground Control runs are steered from groundControl()
     if (b.target && Math.hypot(b.target.x - b.pos.x, b.target.y - b.pos.y) < 5) {
       const booth = b.target, visit = b.job?.type === 'visit' && b.job.station === booth.id;
       const st = (await stations.list()).find((s) => s.id === booth.id);
       if (visit) await this.rested(b.id, t);
-      if (visit || (b.kind !== 'gcAstro' && this.rand() < 0.65)) {
+      if (visit || this.rand() < 0.65) {
         const host = st?.hosted && this.onsite(b);
         const ok = await quiet(async () => game.stamp(b.id, host ? { stationId: booth.id, proof: 'host', code: (await game.hostCode(booth.id, Math.floor(t / HOST_WINDOW_MS))).digits } : this.onsite(b) ? { stationId: booth.id, proof: 'beacon', beacon: await game.beaconToken(booth.id) } : { stationId: booth.id, proof: 'virtual' }));
         if (ok && st && b.passport && (visit || this.rand() < 0.5)) await quiet(() => stations.share(b.id, booth.id, SHARE));
@@ -304,39 +284,6 @@ export class DemoSim {
     return { station: booth.id, name: (await game.passportOf(bot.id))?.name ?? 'A visitor' };
   }
 
-  /** Ground Control needs two people. Whoever is waiting in the queue gets a partner from the cast, who then plays their part. */
-  private async groundControl(t: number): Promise<void> {
-    const { game, gc, venue } = this.s, astro = this.bots.find((b) => b.kind === 'gcAstro');
-    for (const q of await game.db.all<{ player_id: string; role: string; queued_at: number }>('SELECT player_id, role, queued_at FROM gc_queue')) {
-      if (this.botIds.has(q.player_id) || t - q.queued_at < 4000) continue;
-      if (q.role === 'ground' && astro) { await venue.checkIn(astro.id, MITEC); await quiet(() => gc.join(astro.id)); }
-      else if (q.role === 'astro' && this.groundBot) await quiet(() => gc.join(this.groundBot!));
-    }
-    const runs = await game.db.all<{ id: string; ground_id: string; astro_id: string; station_id: string; waypoints: string; expires_at: number }>("SELECT id, ground_id, astro_id, station_id, waypoints, expires_at FROM gc_sessions WHERE state = 'active' AND expires_at > ?", [t]);
-    if (astro && astro.job?.type === 'gc' && !runs.some((r) => r.astro_id === astro.id)) { astro.job = null; astro.path = []; astro.wait = 5; }
-    for (const run of runs) {
-      const target = game.stations.get(run.station_id)!, marks = JSON.parse(run.waypoints) as P2[], last = marks.at(-1);
-      if (astro && run.astro_id === astro.id) { // the cast flies; the person steers with markers
-        const closeEnough = !!last && Math.hypot(last.x - target.x, last.y - target.y) < 14, goal = closeEnough ? target : last, key = goal ? `${goal.x},${goal.y}` : '';
-        if (goal && (astro.job?.type !== 'gc' || astro.job.goalKey !== key)) { astro.job = { type: 'gc', goalKey: key }; astro.wait = 0; astro.speed = 2.4; this.route(astro, goal); }
-        if (closeEnough && !astro.path.length && Math.hypot(astro.pos.x - target.x, astro.pos.y - target.y) < 6) {
-          const owner = await game.db.get<{ owner_id: string }>('SELECT owner_id FROM stations WHERE station_id = ?', [target.id]);
-          if (owner) await quiet(() => this.s.stations.hostCode(owner.owner_id, target.id));
-          await this.rested(astro.id, t);
-          await quiet(async () => game.stamp(astro.id, { stationId: target.id, proof: 'host', code: (await game.hostCode(target.id, Math.floor(t / HOST_WINDOW_MS))).digits }));
-          // keep the demo repeatable: the cast member forgets this station, so it can be a target again
-          await game.db.batch([['DELETE FROM stamps WHERE player_id = ? AND station_id = ?', [astro.id, target.id]], ['DELETE FROM verified_contacts WHERE player_id = ? AND station_id = ?', [astro.id, target.id]]]);
-          astro.job = null; astro.speed = 1.3; astro.wait = 6;
-        }
-      } else if (run.ground_id === this.groundBot) { // the person flies; the cast drops markers a stretch ahead of them
-        const at = await game.presence.position(run.astro_id, t); if (!at) continue;
-        const path = this.nav.path(at, target); let mark: P2 = target;
-        if (path) { let left = 32; for (let i = 1; i < path.length && left > 0; i++) { const a = path[i - 1]!, b = path[i]!, l = Math.hypot(b.x - a.x, b.y - a.y); mark = l <= left ? b : { x: a.x + ((b.x - a.x) * left) / l, y: a.y + ((b.y - a.y) * left) / l }; left -= l; } }
-        if (!last || Math.hypot(last.x - mark.x, last.y - mark.y) > 9) await quiet(() => gc.waypoint(this.groundBot!, mark.x, mark.y));
-      }
-    }
-  }
-
   /* ---- helpers the Demo tour calls for the player ---- */
 
   private async partner(playerId: string): Promise<string | null> {
@@ -362,5 +309,4 @@ export class DemoSim {
     return { claimed: !!st, hosted: !!st?.hosted, digits: st ? (await game.hostCode(b.id, w)).digits : null, expiresInMs: (w + 1) * HOST_WINDOW_MS - t, beacon: await game.beaconToken(b.id) };
   }
   async dock(playerId: string): Promise<boolean> { const me = await this.s.game.me(playerId); if (!me.ticket) return false; await this.s.game.crewDock(me.ticket.code); return true; }
-  async boost(playerId: string, xp: number): Promise<void> { const g = this.s.game; await g.db.batch(g.award(playerId, 'demo_boost', Math.max(100, Math.min(5000, Math.round(xp))), null, { demo: true }, g.now())); }
 }

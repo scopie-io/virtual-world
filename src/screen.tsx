@@ -10,7 +10,7 @@ import './demo/demo.css';
 import { demo, demoState, ensureBackend } from './demo/client';
 import { World, toWorld } from './game/world';
 import { Qr, hex } from './ui/common';
-import { CLASSES, CREW_INFO } from '../shared/rules';
+import { ROLE_INFO } from '../shared/rules';
 import type { LevelData, ScreenView, StationView } from '../shared/types';
 
 const DECK_SECONDS = 28, MAX_DOTS = 2000;
@@ -51,7 +51,7 @@ function startScene(host: HTMLElement, level: LevelData) {
     setDots(list: ScreenView['dots']) {
       let n = 0, h = 0;
       for (const d of list.slice(0, MAX_DOTS)) {
-        C.set(d.cls ? CREW_INFO[d.cls].color : 0xffffff);
+        C.set(d.cls ? ROLE_INFO[d.cls].color : 0xffffff);
         toWorld(d.x, d.y, 1.4, p); M.makeScale(1, 1, 1).setPosition(p); dots.setMatrixAt(n, M); dots.setColorAt(n, C); n++;
         if (d.deck) { toWorld(d.x, d.y, 0.15, p); M.setPosition(p); halos.setMatrixAt(h, M); halos.setColorAt(h, C.set(0x3ddc84)); h++; } // really on the floor
       }
@@ -82,35 +82,35 @@ function Screen() {
   }, []);
 
   if (!auth) return <div class="splash"><div class="x err">✕</div><p>Sign in on the crew console in this browser first, then reload this page.{demo.value ? ` Demo PIN: ${demoState.value?.crewPin}.` : ''}</p><a class="btn" href="/crew.html">Open the crew console</a></div>;
-  const v = view, holders = v ? CLASSES.map((c) => ({ c, n: v.sectors.sectors.filter((s) => s.holder === c).length })).sort((a, b) => b.n - a.n) : [];
+  const v = view;
   return (
     <div class="mc">
       <header>
         <div class="mc-brand"><span>lean<b>.x</b>digital</span><i /><span>ne<b>x</b>ova</span></div>
         <div class="mc-title"><strong>MISSION <b>X</b></strong><span>Live from the MIHAS floor · {deck}</span></div>
-        <div class="mc-live"><span class="live-dot" />{v?.online ?? 0} flying now · {v?.onsite ?? 0} on the floor</div>
+        <div class="mc-live"><span class="live-dot" />{v?.online ?? 0} playing now · {v?.onsite ?? 0} on the floor</div>
       </header>
 
       <aside class="mc-left">
-        <h3>Today's board</h3>
-        <ol>{(v?.board ?? []).slice(0, 8).map((r, i) => <li key={r.title}><span>{i + 1}</span><strong style={r.cls ? { color: hex(CREW_INFO[r.cls].color) } : {}}>{r.title}{r.trusted ? ' ✓' : ''}</strong><em>{r.value.toLocaleString()}</em></li>)}</ol>
+        <h3>Top players today</h3>
+        <ol>{(v?.board ?? []).slice(0, 8).map((r, i) => <li key={r.title}><span>{i + 1}</span><strong style={r.cls ? { color: hex(ROLE_INFO[r.cls].color) } : {}}>{r.title}</strong><em>{r.value.toLocaleString()}</em></li>)}</ol>
         {v && v.board.length === 0 && <p>Nobody on the board yet — be the first.</p>}
-        <h3>Sector control</h3>
-        <div class="mc-crews">{holders.map(({ c, n }) => <div key={c}><i style={{ background: hex(CREW_INFO[c].color) }} /><strong>{CREW_INFO[c].crew}</strong><em>{n} hall{n === 1 ? '' : 's'}</em></div>)}</div>
+        <h3>Most visited booths</h3>
+        <ol>{(v?.booths ?? []).slice(0, 5).map((r, i) => <li key={r.title + i}><span>{i + 1}</span><strong>{r.title}</strong><em>{r.value.toLocaleString()}</em></li>)}</ol>
+        {v && v.booths.length === 0 && <p>No booth is online yet. Exhibiting? Scan and bring yours in.</p>}
       </aside>
 
       <aside class="mc-right">
-        <div class="mc-join"><Qr text={v?.joinUrl ?? location.origin} label="Join Mission X" /><strong>Play the floor.</strong><span>Scan · no app · find the <b>X</b> at 8H18B</span></div>
+        <div class="mc-join"><Qr text={v?.joinUrl ?? location.origin} label="Join Mission X" /><strong>Play the expo.</strong><span>Scan · no app · find the <b>X</b> at 8H18B</span></div>
         <div class="mc-stats">
-          <div><strong>{v?.totals.players ?? 0}</strong><span>astronauts</span></div><div><strong>{v?.totals.stations ?? 0}</strong><span>stations online</span></div>
-          <div><strong>{v?.totals.stamps ?? 0}</strong><span>stamps</span></div><div><strong>{v?.totals.links ?? 0}</strong><span>handshakes</span></div>
+          <div><strong>{v?.totals.players ?? 0}</strong><span>players</span></div><div><strong>{v?.totals.stations ?? 0}</strong><span>booths online</span></div>
+          <div><strong>{v?.totals.stamps ?? 0}</strong><span>stamps</span></div><div><strong>{v?.totals.links ?? 0}</strong><span>cards swapped</span></div>
         </div>
       </aside>
 
       <footer>
-        {v?.storm && <span class="tick gold">⚡ Signal Storm · {v.storm.label} · stamps ×{v.storm.mult}</span>}
-        {v?.drop && <span class="tick">★ Daily Drop · {v.drop.title} at {v.drop.label} · +{v.drop.bonus} XP</span>}
-        <span class="tick">✕ Find the X · Booth 8H18B · Hall 8 · opposite Bernama Studio</span>
+                {v?.drop && <span class="tick">★ Booth of the day · {v.drop.label} · {v.drop.title} · +{v.drop.bonus}</span>}
+        <span class="tick">✕ Find the X · Booth 8H18B · Hall 8 · your free digital business card</span>
       </footer>
     </div>
   );

@@ -101,7 +101,6 @@ async function demoRoute(b: Backend, path: string, req: Request): Promise<Respon
     case 'POST /api/demo/partner-scan': return json({ ok: true, data: await b.sim.partnerScan(need()) });
     case 'POST /api/demo/visitor': return json({ ok: true, data: await b.sim.visitNow(need()) });
     case 'POST /api/demo/dock': return json({ ok: true, data: await b.sim.dock(need()) });
-    case 'POST /api/demo/boost': await b.sim.boost(need(), 1500); return json({ ok: true, data: null });
     case 'POST /api/demo/reset': b.alive = false; clearInterval(b.heartbeat); clearTimeout(saveTimer); saving = null; jarDirty = false; backend = null; await kvClear(); return json({ ok: true, data: null });
     default: return json({ ok: false, error: 'Unknown demo helper', code: 'demo' }, 404);
   }

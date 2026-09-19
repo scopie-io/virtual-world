@@ -67,7 +67,7 @@ export class Venue {
 
   /** Real walking on deck earns 1 XP per 10 m, capped daily. Metres come from server-accepted deck movement only. */
   async walk(id: string, metres: number, t: number): Promise<XpEvent[]> {
-    if (metres <= 0) return [];
+    if (!this.g.features.explore || metres <= 0) return [];
     const pending = (this.unpaid.get(id) ?? 0) + metres;
     if (pending < 25) { this.unpaid.set(id, pending); return []; } // touch the database every 25 m, not every ping
     this.unpaid.delete(id);

@@ -1,8 +1,8 @@
-// Link-up (player ↔ player Passport exchange) and the Contact Log.
+// Swapping cards between two people, and My contacts. ("link" in code and tables = one card swap.)
 import { Game, GameError, cleanFields, cleanText, dayStart } from './game.js';
 import { shortCode } from './crypto.js';
 import type { Contact, LinkCode, LinkPeek, SharedCard, XpEvent } from '../shared/types.js';
-import { BASE_XP, INFLUENCE, LINK_CODE_TTL_MS, LINK_DAILY_FULL, LINK_OVERFLOW_XP, rankFor, type PlayerClass, type ShareField } from '../shared/rules.js';
+import { INFLUENCE, LINK_CODE_TTL_MS, LINK_DAILY_FULL, LINK_OVERFLOW_XP, POINTS, type Role, type ShareField } from '../shared/rules.js';
 import type { Stmt } from './db/types.js';
 
 const pair = (x: string, y: string): [string, string] => (x < y ? [x, y] : [y, x]);
@@ -35,7 +35,7 @@ export class Social {
   private async resolve(id: string, code: unknown): Promise<string> {
     const c = String(code ?? '').trim().toUpperCase();
     const row = /^[A-Z2-9]{8}$/.test(c) ? await this.g.db.get<{ player_id: string; expires_at: number }>('SELECT player_id, expires_at FROM link_codes WHERE code = ?', [c]) : undefined;
-    if (!row || row.expires_at < this.g.now()) throw new GameError('bad_link', 'That Link code has expired — ask them to show a fresh one', 404);
+    if (!row || row.expires_at < this.g.now()) throw new GameError('bad_link', 'That code has expired — ask them to show a fresh one', 404);
     if (row.player_id === id) throw new GameError('self', 'That is your own code — let the other person scan it');
     return row.player_id;
   }
@@ -45,7 +45,7 @@ export class Social {
     await this.g.requirePassport(id);
     const other = await this.resolve(id, code), p = await this.g.player(other), [a, b] = pair(id, other);
     return {
-      callsign: p.callsign, cls: p.cls as PlayerClass | null, rank: rankFor(p.xp, { passport: true, docked: p.docked_at != null }).rank.label,
+      callsign: p.callsign, cls: p.cls as Role | null,
       shares: await this.g.sharePrefs(other), alreadyLinked: !!(await this.g.db.get('SELECT 1 AS x FROM links WHERE a_id = ? AND b_id = ?', [a, b])),
     };
   }
@@ -53,12 +53,12 @@ export class Social {
   async link(id: string, code: unknown, fieldsIn: unknown): Promise<XpEvent[]> {
     await this.g.requirePassport(id);
     const other = await this.resolve(id, code), [a, b] = pair(id, other), t = this.g.now();
-    if (await this.g.db.get('SELECT 1 AS x FROM links WHERE a_id = ? AND b_id = ?', [a, b])) throw new GameError('dup', 'You two are already linked');
+    if (await this.g.db.get('SELECT 1 AS x FROM links WHERE a_id = ? AND b_id = ?', [a, b])) throw new GameError('dup', 'You two have already swapped cards');
     const [me, them, theirFields] = await Promise.all([this.g.player(id), this.g.player(other), this.g.sharePrefs(other)]);
 
     const xpFor = async (pid: string) => {
       const n = await this.g.db.get<{ n: number }>('SELECT COUNT(*) AS n FROM links WHERE (a_id = ? OR b_id = ?) AND created_at >= ?', [pid, pid, dayStart(t)]);
-      return (n?.n ?? 0) < LINK_DAILY_FULL ? BASE_XP.link : LINK_OVERFLOW_XP;
+      return (n?.n ?? 0) < LINK_DAILY_FULL ? POINTS.swap : LINK_OVERFLOW_XP;
     };
     const [myXp, theirXp] = await Promise.all([xpFor(id), xpFor(other)]);
     const share = (from: string, to: string, fields: string): Stmt =>

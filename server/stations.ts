@@ -1,8 +1,9 @@
-// Station Command: exhibitors claim a booth, host it with a rotating code, and receive consented leads.
+// Exhibitors: bring a booth online, show its live QR, and receive the cards visitors choose to leave.
+// ("station" in code and tables = a booth that is online.)
 import type { Stmt } from './db/types.js';
 import { Game, GameError, cleanFields, cleanText } from './game.js';
 import type { CrewStationRow, HostCode, HostLead, HostStation, StationClaimInput, StationStatus, StationView, XpEvent } from '../shared/types.js';
-import { BASE_XP, HOST_ONLINE_MS, HOST_WINDOW_MS, MAX_STATIONS_PER_OWNER, SXP, stationLevel, type ShareField } from '../shared/rules.js';
+import { HOST_ONLINE_MS, HOST_WINDOW_MS, MAX_STATIONS_PER_OWNER, POINTS, SXP, stationLevel, type ShareField } from '../shared/rules.js';
 
 interface StationRow { station_id: string; owner_id: string; company: string; offer: string; link: string; color: number; status: StationStatus; claimed_at: number; host_seen_at: number | null; host_ms: number }
 interface Counts { stamps: number; shares: number; verified: number }
@@ -56,8 +57,8 @@ export class Stations {
 
   async claim(id: string, input: StationClaimInput): Promise<XpEvent[]> {
     const booth = this.g.stations.get(String(input.stationId));
-    if (!booth) throw new GameError('no_station', 'Unknown station');
-    if (booth.id === this.g.level.hero.id) throw new GameError('reserved', 'The Launch Pad is taken');
+    if (!booth) throw new GameError('no_station', 'Unknown booth');
+    if (booth.id === this.g.level.hero.id) throw new GameError('reserved', 'That one is ours — Lean X Digital');
     await this.g.requirePassport(id);
     const company = cleanText(input.company, 80), offer = cleanText(input.offer, 120), link = cleanLink(input.link);
     if (company.length < 2) throw new GameError('company', 'Enter the company name shown on your booth');
@@ -66,7 +67,7 @@ export class Stations {
 
     const t = this.g.now();
     const existing = await this.g.db.get<StationRow>('SELECT * FROM stations WHERE station_id = ?', [booth.id]);
-    if (existing && existing.owner_id !== id) throw new GameError('taken', existing.status === 'revoked' ? 'This station is locked — talk to the crew at 8H18B' : 'Someone already hosts this station. If that is wrong, see the crew at 8H18B.', 409);
+    if (existing && existing.owner_id !== id) throw new GameError('taken', existing.status === 'revoked' ? 'This booth is locked — talk to the crew at 8H18B' : 'Someone already brought this booth online. If that is wrong, see the crew at 8H18B.', 409);
     if (existing?.status === 'revoked') throw new GameError('revoked', 'This claim was removed by the crew — see us at 8H18B', 403);
     if (existing) { // owner editing their profile
       await this.g.db.run('UPDATE stations SET company = ?, offer = ?, link = ?, color = ? WHERE station_id = ?', [company, offer, link, color, booth.id]);
@@ -74,18 +75,19 @@ export class Stations {
       return [];
     }
     const mine = await this.g.db.get<{ n: number }>("SELECT COUNT(*) AS n FROM stations WHERE owner_id = ? AND status != 'revoked'", [id]);
-    if ((mine?.n ?? 0) >= MAX_STATIONS_PER_OWNER) throw new GameError('too_many', `One account can host up to ${MAX_STATIONS_PER_OWNER} stations`);
+    if ((mine?.n ?? 0) >= MAX_STATIONS_PER_OWNER) throw new GameError('too_many', `One account can run up to ${MAX_STATIONS_PER_OWNER} booths`);
     const first = (mine?.n ?? 0) === 0;
     const stmts: Stmt[] = [['INSERT INTO stations (station_id, owner_id, company, offer, link, color, status, claimed_at) VALUES (?,?,?,?,?,?,?,?)', [booth.id, id, company, offer, link, color, 'pending', t]]];
-    if (first) stmts.push(...this.g.award(id, 'station_claim', BASE_XP.station_claim, booth.id, null, t));
+    if (first) stmts.push(...this.g.award(id, 'station_claim', POINTS.boothOnline, booth.id, null, t));
+    stmts.push(["UPDATE players SET cls = 'exhibitor' WHERE id = ?", [id]]); // whoever runs a booth is an exhibitor, whichever door they came in by
     await this.g.db.batch(stmts);
     this.cache.at = -1e9;
-    return first ? [{ action: 'station_claim', xp: BASE_XP.station_claim, target: company }] : [];
+    return first ? [{ action: 'station_claim', xp: POINTS.boothOnline, target: company }] : [];
   }
 
   private async owned(id: string, stationId: string): Promise<StationRow> {
     const r = await this.g.db.get<StationRow>('SELECT * FROM stations WHERE station_id = ?', [stationId]);
-    if (!r || r.owner_id !== id || r.status === 'revoked') throw new GameError('not_host', 'You do not host this station', 403);
+    if (!r || r.owner_id !== id || r.status === 'revoked') throw new GameError('not_host', 'This is not your booth', 403);
     return r;
   }
 
@@ -122,9 +124,9 @@ export class Stations {
   async share(id: string, stationId: string, fieldsIn: unknown): Promise<XpEvent[]> {
     await this.g.requirePassport(id);
     const st = await this.g.db.get<StationRow>('SELECT * FROM stations WHERE station_id = ?', [stationId]);
-    if (!st || st.status === 'revoked') throw new GameError('not_hosted', 'This station is not online yet');
-    if (st.owner_id === id) throw new GameError('own_station', 'This is your own station');
-    if (!(await this.g.db.get('SELECT 1 AS x FROM stamps WHERE player_id = ? AND station_id = ?', [id, stationId]))) throw new GameError('need_stamp', 'Stamp the station first');
+    if (!st || st.status === 'revoked') throw new GameError('not_hosted', 'This booth is not online yet');
+    if (st.owner_id === id) throw new GameError('own_station', 'This is your own booth');
+    if (!(await this.g.db.get('SELECT 1 AS x FROM stamps WHERE player_id = ? AND station_id = ?', [id, stationId]))) throw new GameError('need_stamp', 'Stamp the booth first');
     const fields = cleanFields(fieldsIn).join(','), t = this.g.now();
     const prior = await this.g.db.get<{ id: number }>('SELECT id FROM card_shares WHERE from_player = ? AND to_station = ?', [id, stationId]);
     if (prior) { // changing the fields, or sharing again after revoking: no second reward
@@ -133,9 +135,9 @@ export class Stations {
     }
     await this.g.db.batch([
       ['INSERT INTO card_shares (from_player, to_station, fields, created_at) VALUES (?,?,?,?)', [id, stationId, fields, t]],
-      ...this.g.award(id, 'share_station', BASE_XP.share_station, stationId, { fields }, t),
+      ...this.g.award(id, 'share_station', POINTS.leaveCard, stationId, { fields }, t),
     ]);
-    return [{ action: 'share_station', xp: BASE_XP.share_station, target: st.company }];
+    return [{ action: 'share_station', xp: POINTS.leaveCard, target: st.company }];
   }
 
   async revokeShare(id: string, stationId: string): Promise<void> {
@@ -155,7 +157,7 @@ export class Stations {
     const rows = await this.g.db.all<StationRow & { callsign: string; name: string; pcompany: string }>(
       `SELECT s.*, pl.callsign, p.name, p.company AS pcompany FROM stations s JOIN players pl ON pl.id = s.owner_id JOIN passports p ON p.player_id = s.owner_id ORDER BY s.claimed_at DESC`);
     const counts = await this.counts(rows.map((r) => r.station_id)), t = this.g.now();
-    return rows.map((r) => ({ ...this.view(r, counts.get(r.station_id)!, t), ownerCallsign: r.callsign, ownerName: r.name, ownerCompany: r.pcompany, claimedAt: r.claimed_at }));
+    return rows.map((r) => ({ ...this.view(r, counts.get(r.station_id)!, t), visits: counts.get(r.station_id)!.stamps, ownerCallsign: r.callsign, ownerName: r.name, ownerCompany: r.pcompany, claimedAt: r.claimed_at }));
   }
 
   async crewSetStatus(stationId: string, status: string): Promise<void> {
