@@ -1,13 +1,23 @@
-// One-thumb controls: a floating joystick in the lower-left, tap-to-move anywhere else, drag to orbit, pinch/wheel to zoom.
-// Desktop: WASD / arrows, click to move, drag to orbit, wheel to zoom.
+// One-thumb controls: a floating joystick in the lower-left, tap-to-walk anywhere, drag to look around, pinch / wheel to zoom.
+// Desktop: WASD / arrows, click to walk, drag to look around, wheel to zoom.
+//
+// A touch in the joystick zone is not a joystick until the thumb actually moves: lifted in place, it is a tap like any
+// other — so "tap where you want to go" works on the whole screen, including under the thumb.
 
-export interface InputSink { onTap(x: number, y: number): void; onOrbit(dYaw: number): void; onZoom(factor: number): void }
+export interface InputSink {
+  onTap(x: number, y: number): void; onOrbit(dYaw: number): void; onZoom(factor: number): void;
+  /** false while a sheet is open: the world does not listen to the keyboard then */
+  enabled(): boolean;
+}
+
+const STICK_R = 52, STICK_DEAD = 9, TAP_SLOP = 9, TAP_MS = 450;
+const typing = (t: EventTarget | null) => t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement || (t instanceof HTMLElement && t.isContentEditable);
 
 export class Input {
   /** Desired move in screen space: x right, y up, length ≤ 1. */
   readonly move = { x: 0, y: 0 };
   private keys = new Set<string>();
-  private stick: { id: number; x: number; y: number } | null = null;
+  private stick: { id: number; x: number; y: number; t: number; live: boolean } | null = null;
   private drags = new Map<number, { x: number; y: number; sx: number; sy: number; t: number; moved: boolean }>();
   private pinch = 0;
   private base: HTMLDivElement; private knob: HTMLDivElement;
@@ -25,50 +35,65 @@ export class Input {
     on(el, 'pointercancel', (e: PointerEvent) => this.up(e, true));
     on(el, 'wheel', (e: WheelEvent) => { e.preventDefault(); sink.onZoom(Math.exp(e.deltaY * 0.0012)); }, { passive: false });
     on(el, 'contextmenu', (e: Event) => e.preventDefault());
-    on(window, 'keydown', (e: KeyboardEvent) => { if (!(e.target instanceof HTMLInputElement)) { this.keys.add(e.code); this.fromKeys(); } });
+    on(window, 'keydown', (e: KeyboardEvent) => { if (typing(e.target) || !sink.enabled()) return; this.keys.add(e.code); this.fromKeys(); });
     on(window, 'keyup', (e: KeyboardEvent) => { this.keys.delete(e.code); this.fromKeys(); });
-    on(window, 'blur', () => { this.keys.clear(); this.fromKeys(); });
+    on(window, 'blur', () => this.release());
+    on(document, 'visibilitychange', () => { if (document.hidden) this.release(); });
+  }
+
+  /** Let go of everything: a sheet opened, the tab went away. Nobody keeps walking because a key-up was never heard. */
+  release() {
+    this.keys.clear(); this.drags.clear(); this.pinch = 0;
+    if (this.stick) { this.stick = null; this.base.style.display = 'none'; }
+    this.move.x = this.move.y = 0;
   }
 
   private fromKeys() {
-    if (this.stick) return;
+    if (this.stick?.live) return;
     const k = this.keys, x = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0), y = (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0);
     const l = Math.hypot(x, y) || 1; this.move.x = x / l; this.move.y = y / l;
   }
 
   private down(e: PointerEvent) {
-    this.el.setPointerCapture(e.pointerId);
+    try { this.el.setPointerCapture(e.pointerId); } catch { /* the pointer is already gone (a very fast tap): nothing to hold on to */ }
     const r = this.el.getBoundingClientRect(), inStickZone = e.pointerType === 'touch' && e.clientX - r.left < r.width * 0.5 && e.clientY - r.top > r.height * 0.45;
-    if (inStickZone && !this.stick) {
-      this.stick = { id: e.pointerId, x: e.clientX, y: e.clientY };
-      this.base.style.cssText = `display:block;left:${e.clientX}px;top:${e.clientY}px`; this.knob.style.transform = 'translate(-50%,-50%)';
-      return;
-    }
+    if (inStickZone && !this.stick && this.drags.size === 0) { this.stick = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), live: false }; return; }
     this.drags.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false });
-    if (this.drags.size === 2) this.pinch = this.pinchDist();
+    if (this.drags.size === 2) { this.pinch = this.pinchDist(); for (const d of this.drags.values()) d.moved = true; } // a pinch is never a tap, whichever finger lifts last
   }
 
   private pinchDist() { const [a, b] = [...this.drags.values()]; return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0; }
 
   private moveEv(e: PointerEvent) {
-    if (this.stick?.id === e.pointerId) {
-      const R = 52; let dx = e.clientX - this.stick.x, dy = e.clientY - this.stick.y; const l = Math.hypot(dx, dy);
-      if (l > R) { dx *= R / l; dy *= R / l; }
+    const s = this.stick;
+    if (s?.id === e.pointerId) {
+      let dx = e.clientX - s.x, dy = e.clientY - s.y, l = Math.hypot(dx, dy);
+      if (!s.live) { if (l < TAP_SLOP) return; s.live = true; this.base.style.cssText = `display:block;left:${s.x}px;top:${s.y}px`; }
+      if (l > STICK_R) { // the base follows a thumb that wanders, so the stick never runs out of travel
+        s.x += (dx / l) * (l - STICK_R); s.y += (dy / l) * (l - STICK_R); this.base.style.left = s.x + 'px'; this.base.style.top = s.y + 'px';
+        dx = e.clientX - s.x; dy = e.clientY - s.y; l = STICK_R;
+      }
       this.knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-      const dead = l < 8 ? 0 : 1; this.move.x = (dx / R) * dead; this.move.y = (-dy / R) * dead;
+      const mag = l <= STICK_DEAD ? 0 : (l - STICK_DEAD) / (STICK_R - STICK_DEAD); // ramps from the edge of the dead zone: no jump from still to a jog
+      this.move.x = l ? (dx / l) * mag : 0; this.move.y = l ? (-dy / l) * mag : 0;
       return;
     }
     const d = this.drags.get(e.pointerId); if (!d) return;
     const dx = e.clientX - d.x; d.x = e.clientX; d.y = e.clientY;
-    if (Math.hypot(d.x - d.sx, d.y - d.sy) > 8) d.moved = true;
+    if (Math.hypot(d.x - d.sx, d.y - d.sy) > TAP_SLOP) d.moved = true;
     if (this.drags.size === 2) { const p = this.pinchDist(); if (this.pinch && p) this.sink.onZoom(this.pinch / p); this.pinch = p; }
     else if (d.moved) this.sink.onOrbit(-dx * 0.006);
   }
 
   private up(e: PointerEvent, cancelled = false) {
-    if (this.stick?.id === e.pointerId) { this.stick = null; this.base.style.display = 'none'; this.move.x = this.move.y = 0; this.fromKeys(); return; }
+    const s = this.stick;
+    if (s?.id === e.pointerId) {
+      this.stick = null; this.base.style.display = 'none'; this.move.x = this.move.y = 0; this.fromKeys();
+      if (!s.live && !cancelled && performance.now() - s.t < TAP_MS) this.sink.onTap(e.clientX, e.clientY); // never became a joystick: it was a tap
+      return;
+    }
     const d = this.drags.get(e.pointerId); this.drags.delete(e.pointerId); this.pinch = 0;
-    if (d && !cancelled && !d.moved && performance.now() - d.t < 450 && this.drags.size === 0) this.sink.onTap(e.clientX, e.clientY);
+    if (d && !cancelled && !d.moved && performance.now() - d.t < TAP_MS && this.drags.size === 0) this.sink.onTap(e.clientX, e.clientY);
   }
 
   dispose() { this.off.forEach((f) => f()); this.base.remove(); }

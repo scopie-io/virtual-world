@@ -229,6 +229,8 @@ export class DemoSim {
   private async arrive(b: Bot, t: number): Promise<void> {
     const { game, stations } = this.s;
     if (b.seat) { // walked to a chair: sit for a while, like anyone would
+      const occupied = (await Promise.all(this.people.ids.map((id) => this.s.game.presence.position(id, t)))).some((p) => p && Math.hypot(p.x - b.seat!.x, p.y - b.seat!.y) < 0.8);
+      if (occupied) { b.seat = null; b.wait = 1; return; }
       if (Math.hypot(b.seat.x - b.pos.x, b.seat.y - b.pos.y) < 2.5) { b.pos = { x: b.seat.x, y: b.seat.y }; b.h = b.seat.h; b.pose = 'sit'; b.poseUntil = t + 20_000 + this.rand() * 30_000; } else b.seat = null;
       return;
     }

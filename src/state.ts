@@ -52,24 +52,34 @@ export function markSeen(key: string): boolean {
 export const pendingLink = signal<string | null>(null);
 
 export interface Toast { id: number; title: string; sub?: string; tone: 'xp' | 'info' | 'warn' }
+/** What is on screen now: at most one. The rest wait their turn, so a busy moment never buries the instruction card. */
 export const toasts = signal<Toast[]>([]);
-let toastId = 0;
+let toastId = 0, timer: ReturnType<typeof setTimeout> | undefined;
+const waiting: { t: Toast; ms: number }[] = [];
+function next() {
+  const n = waiting.shift(); if (!n) { toasts.value = []; timer = undefined; return; }
+  toasts.value = [n.t];
+  timer = setTimeout(next, waiting.length ? Math.min(n.ms, 2200) : n.ms); // a queue behind it: keep things moving
+}
 export function toast(title: string, sub?: string, tone: Toast['tone'] = 'info', ms = 3200) {
-  const t = { id: ++toastId, title, sub, tone };
-  toasts.value = [...toasts.value.slice(-3), t];
-  setTimeout(() => { toasts.value = toasts.value.filter((x) => x.id !== t.id); }, ms);
+  const last = waiting[waiting.length - 1]?.t ?? toasts.value[0];
+  if (last && last.title === title && last.sub === sub) return; // the same thing twice says nothing new
+  const item = { t: { id: ++toastId, title, sub, tone }, ms };
+  if (tone === 'warn') { waiting.unshift(item); clearTimeout(timer); next(); return; } // something went wrong: say it now
+  waiting.push(item); if (waiting.length > 4) waiting.splice(0, waiting.length - 4);
+  if (!timer) next();
 }
 
 const ACTION_LABEL: Record<string, string> = {
   passport: 'Your card is ready', dock: 'Claimed at Booth 8H18B', stamp: 'Stamped', scan: 'Scanned at the real booth', verified_contact: 'Met in person',
   share_station: 'Card left', link: 'Cards swapped', station_claim: 'Your booth is online', daily_drop: 'Booth of the day',
 };
+/** One action can pay several ways at once (a scan that is also the booth of the day). It is still one moment: one toast, one total. */
 export function showEvents(events: XpEvent[] | undefined) {
-  for (const e of events ?? []) {
-    const label = ACTION_LABEL[e.action] ?? e.action;
-    if (e.xp > 0) toast(`+${e.xp} points`, [label, e.target, e.note].filter(Boolean).join(' · '), 'xp', e.note ? 5200 : 3200);
-    else toast(label, e.target);
-  }
+  const list = events ?? []; if (!list.length) return;
+  const total = list.reduce((n, e) => n + e.xp, 0), labels = [...new Set(list.map((e) => ACTION_LABEL[e.action] ?? e.action))], target = list.find((e) => e.target)?.target, note = list.find((e) => e.note)?.note;
+  if (total > 0) toast(`+${total} points`, [...labels, target, note].filter(Boolean).join(' · '), 'xp', note ? 5200 : 3400);
+  else toast(labels[0]!, target);
 }
 
 export const stampedSet = computed(() => new Set(me.value?.stamps ?? []));

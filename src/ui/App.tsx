@@ -97,6 +97,11 @@ function Hud({ engine }: Eng) {
   const [stamping, setStamping] = useState(false), [open, setOpen] = useState(false), [tray, setTray] = useState(false);
   const place = herePlace.value, sitting = seated.value, eng = engine();
   const express = (f: () => void) => () => { f(); setTray(false); };
+  useEffect(() => { // an open tray is a question; tapping anywhere else is the answer "never mind"
+    if (!tray) return;
+    const away = (e: Event) => { if (!(e.target as HTMLElement).closest?.('.express')) setTray(false); };
+    document.addEventListener('pointerdown', away, true); return () => document.removeEventListener('pointerdown', away, true);
+  }, [tray]);
   const goal = guideTarget.value, stName = st ? view?.company || st.name || 'Booth ' + st.id : '', total = (level.value?.booths.length ?? 1) - 1;
   const trail = guideOn.value && distToGoal.value != null && (goal || (!m.passport && j.kind === 'visitor'));
   const word = j.kind === 'visitor' ? 'Chapter' : 'Step';

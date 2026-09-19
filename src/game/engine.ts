@@ -22,7 +22,7 @@ const BOOTH_LABELS = 6, BOOTH_LABEL_RANGE = 12;
 /** A scan at a real booth is still "where you are" for this long after you come back to the game. */
 const ARRIVAL_FRESH_MS = 10 * 60_000;
 
-interface Holo { a: Astronaut; cls: Hologram['cls']; x: number; y: number; tx: number; ty: number; h: number; label: HTMLDivElement; seen: number }
+interface Holo { a: Astronaut; cls: Hologram['cls']; x: number; y: number; tx: number; ty: number; h: number; label: HTMLDivElement; seen: number; sitting: boolean }
 
 export function pickQuality(): Quality {
   const mem = (navigator as { deviceMemory?: number }).deviceMemory ?? 8;
@@ -55,6 +55,7 @@ export class Engine {
   private vel = { x: 0, y: 0 };
   private pose: Pose = ''; private poseUntil = 0; private jumpT = 1; private seat: Seat | null = null; private wantBeforeSit = 30;
   private liftT = 1; private hallNow: number | null = null;
+  private seatGoal: Seat | null = null;
   private halls: ReturnType<typeof hallCards>;
   private stops: (() => void)[] = [];
 
@@ -81,7 +82,9 @@ export class Engine {
       onTap: (x, y) => this.tapMove(x, y),
       onOrbit: (d) => { this.cam.yaw += d; },
       onZoom: (f) => { this.cam.want = THREE.MathUtils.clamp(this.cam.want * f, 12, 95); },
+      enabled: () => !modal.value,
     });
+    this.stops.push(effect(() => { if (modal.value) this.input.release(); })); // a sheet opened: stop walking, forget held keys
 
     for (const l of this.world.labels) {
       const el = Object.assign(document.createElement('div'), { className: `lbl ${l.kind}`, textContent: l.text });
@@ -169,14 +172,14 @@ export class Engine {
       else { toWorld(this.pos.x, this.pos.y, 0, p.group.position); p.group.rotation.y = this.heading; p.animate(dt, 0); return; }
     }
     if (inp.x || inp.y) {
-      this.route = [];
+      this.route = []; this.seatGoal = null;
       const s = Math.sin(this.cam.yaw), c = Math.cos(this.cam.yaw);
       const wx = c * inp.x - s * inp.y, wz = -s * inp.x - c * inp.y;   // screen → world
       dx = wx; dy = -wz;
     } else if (this.route.length) {
       const n = this.route[0]!, ddx = n.x - this.pos.x, ddy = n.y - this.pos.y, l = Math.hypot(ddx, ddy);
       if (l < 0.35) this.route.shift(); else { dx = ddx / l; dy = ddy / l; }
-    }
+    } else if (this.seatGoal) this.takeSeat(this.seatGoal); // walked up to the chair: sit
     // velocity eases toward what the stick asks for: starts and stops have a little weight, turns stay sharp
     const v = this.vel, k = Math.min(1, dt * ACCEL); v.x += (dx * RUN_SPEED - v.x) * k; v.y += (dy * RUN_SPEED - v.y) * k;
     const sp = Math.hypot(v.x, v.y);
@@ -203,11 +206,24 @@ export class Engine {
   emote(pose: 'wave' | 'cheer' | 'dance') { if (!this.player) return; if (this.seat) this.stand(); this.setPose(pose); this.poseUntil = performance.now() + (pose === 'dance' ? 5200 : 2600); }
   jump() { if (!this.player || this.jumpT < 1) return; if (this.seat) this.stand(); this.jumpT = 0; this.setPose('jump'); this.poseUntil = performance.now() + JUMP_S * 1000; }
 
-  /** Sit on the nearest free seat of the place you are standing in. */
+  /** A seat is free if the quiet crowd is not in it and no player we can see is sitting there. */
+  private freeSeats(pl: NonNullable<typeof herePlace.value>): Seat[] {
+    const sitters = [...this.holos.values()].filter((o) => o.sitting);
+    return pl.seats.filter((s, i) => !taken(pl, i) && !sitters.some((o) => Math.hypot(o.tx - s.x, o.ty - s.y) < 0.7));
+  }
+
+  /** Walk to the nearest free seat of the place you are in, and sit down when you get there. */
   sit() {
     const pl = herePlace.value; if (!this.player || !pl || this.seat) return;
-    const free = pl.seats.filter((_, i) => !taken(pl, i)), s = free.reduce<Seat | null>((best, x) => (!best || Math.hypot(x.x - this.pos.x, x.y - this.pos.y) < Math.hypot(best.x - this.pos.x, best.y - this.pos.y) ? x : best), null);
-    if (!s) return;
+    const d = (s: Seat) => Math.hypot(s.x - this.pos.x, s.y - this.pos.y), s = this.freeSeats(pl).reduce<Seat | null>((best, x) => (!best || d(x) < d(best) ? x : best), null);
+    if (!s) { toast('Every seat is taken', 'Try again in a moment'); return; }
+    if (d(s) < 1.6) return this.takeSeat(s);
+    const path = this.nav.path(this.pos, s); if (!path) return this.takeSeat(s);
+    this.route = path.slice(1); this.seatGoal = s;
+  }
+  private takeSeat(s: Seat) {
+    this.seatGoal = null;
+    const pl = herePlace.value; if (pl && !this.freeSeats(pl).includes(s)) { this.sit(); return; } // someone got there first: the next one
     this.seat = s; this.pos = { x: s.x, y: s.y }; this.heading = s.h; this.route = []; this.vel.x = this.vel.y = 0;
     this.setPose('sit', s.z); seated.value = true; this.wantBeforeSit = this.cam.want; this.cam.want = Math.min(this.cam.want, 17);
   }
@@ -262,6 +278,7 @@ export class Engine {
     const ray = new THREE.Raycaster(); ray.setFromCamera(ndc, this.camera);
     const hit = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3()); if (!hit) return;
     if (this.seat) this.stand();
+    this.seatGoal = null;
     const path = this.nav.path(this.pos, { x: hit.x + 95, y: 72 - hit.z }); if (!path) return;
     this.route = path.slice(1);
     const end = path[path.length - 1]!; toWorld(end.x, end.y, 0.04, this.ping.mesh.position); this.ping.t = 0; // "understood: going there"
@@ -294,7 +311,7 @@ export class Engine {
   }
 
   /** Walk to the current goal on its own — the "take me there" button. */
-  autopilot() { if (this.seat) this.stand(); const p = this.nav.path(this.pos, this.goal); if (p) this.route = p.slice(1); }
+  autopilot() { if (this.seat) this.stand(); this.seatGoal = null; const p = this.nav.path(this.pos, this.goal); if (p) this.route = p.slice(1); }
 
   /* ---------------- camera ---------------- */
 
@@ -384,11 +401,11 @@ export class Engine {
       if (!o) {
         const a = new Astronaut({ spec: defaultAvatar(h.cls), jacket: h.cls ? ROLE_INFO[h.cls].color : undefined }); a.group.scale.setScalar(1.25); this.world.scene.add(a.group);
         const label = Object.assign(document.createElement('div'), { className: 'lbl person', textContent: h.callsign }); this.host.appendChild(label);
-        o = { a, cls: h.cls, x: h.x, y: h.y, tx: h.x, ty: h.y, h: h.h, label, seen: now }; this.holos.set(h.id, o);
+        o = { a, cls: h.cls, x: h.x, y: h.y, tx: h.x, ty: h.y, h: h.h, label, seen: now, sitting: false }; this.holos.set(h.id, o);
       }
       if (o.label.textContent !== h.callsign) o.label.textContent = h.callsign;
       const sitting = h.pose === 'sit', chair = sitting ? this.world.places.flatMap((p) => p.seats).find((s) => Math.hypot(s.x - h.x, s.y - h.y) < 0.8) : undefined;
-      o.a.setPose(h.pose ?? '', chair?.z); if (sitting) { o.x = h.x; o.y = h.y; }
+      o.a.setPose(h.pose ?? '', chair?.z); o.sitting = sitting; if (sitting) { o.x = h.x; o.y = h.y; }
       o.tx = h.x; o.ty = h.y; o.h = h.h; o.seen = now;
     }
     for (const [id, o] of this.holos) if (now - o.seen > PING_MS * 3) { o.a.dispose(); o.label.remove(); this.holos.delete(id); }

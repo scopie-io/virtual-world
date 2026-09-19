@@ -8,9 +8,11 @@ export const hex = (n: number) => '#' + n.toString(16).padStart(6, '0');
 
 export function Sheet({ k, title, gold, wide, onClose, children }: { k?: string; title?: string; gold?: boolean; wide?: boolean; onClose?: (() => void) | false; children: ComponentChildren }) {
   const close = onClose === false ? null : onClose ?? (() => (modal.value = null));
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (!box.current?.contains(document.activeElement)) box.current?.focus({ preventScroll: true }); }, []);
   return (
     <div class="scrim" onClick={(e) => e.target === e.currentTarget && close?.()}>
-      <div class={'sheet' + (wide ? ' wider' : '')} role="dialog" aria-modal="true" aria-label={title}>
+      <div ref={box} tabIndex={-1} class={'sheet' + (wide ? ' wider' : '')} role="dialog" aria-modal="true" aria-label={title}>
         {close && <button type="button" class="close" aria-label="Close" onClick={close}>×</button>}
         {k && <div class={'k' + (gold ? ' gold' : '')}>{k}</div>}
         {title && <h2>{title}</h2>}
