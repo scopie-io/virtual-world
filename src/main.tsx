@@ -7,7 +7,7 @@ import { handleScan } from './scan';
 import { ensureBackend } from './demo/client';
 import { installBack } from './ui/back';
 import { installSfx } from './sfx';
-import { bootError, bootNote, drop, level, me, myBooths, phase, stations } from './state';
+import { bootError, bootNote, drop, level, me, myBooths, online, phase, stations } from './state';
 import type { LevelData } from '../shared/types';
 
 let engine: Engine | null = null;
@@ -20,7 +20,7 @@ function poll() {
   const pull = () => {
     if (document.hidden) return;
     api.stations().then((s) => (stations.value = s), () => {});
-    api.today().then((t) => (drop.value = t.drop), () => {});
+    api.today().then((t) => { drop.value = t.drop; if (phase.value !== 'play') online.value = t.online; }, () => {}); // in play the count comes with every position update
     if (me.value?.cls === 'exhibitor' || me.value?.hosting.length) api.myBooths().then((b) => (myBooths.value = b), () => {});
   };
   pull();

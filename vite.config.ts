@@ -39,8 +39,18 @@ function demoServiceWorker(): Plugin {
   };
 }
 
+/** Share cards need absolute addresses: filled in from SITE_URL, or the production domain Vercel gives the build. */
+function shareCard(): Plugin {
+  const host = process.env.SITE_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '');
+  const site = host.replace(/\/$/, '');
+  return {
+    name: 'mission-x-share-card',
+    transformIndexHtml: (html) => (site ? html.replace('content="/og.png"', `content="${site}/og.png"`).replace('<meta property="og:type"', `<meta property="og:url" content="${site}/">\n<meta property="og:type"`) : html),
+  };
+}
+
 export default defineConfig({
-  plugins: [preact(), demoServiceWorker()],
+  plugins: [preact(), demoServiceWorker(), shareCard()],
   server: { port: 5173, strictPort: true, host: true, proxy: { '/api': api, '/p': api } },
   build: {
     target: 'es2020',

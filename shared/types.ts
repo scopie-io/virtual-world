@@ -164,7 +164,7 @@ export interface BoardRow { kind: 'player' | 'station' | 'team'; title: string; 
 export interface ReviewRow { callsign: string; name: string; company: string; value: number; unit: string; xp: number; trust: TrustView; flags: number; banned: boolean; mix: string }
 export interface TeamView { name: string; owner: boolean; code: string | null; members: { callsign: string; xp: number; you?: boolean }[]; score: number }
 /** What is special today. */
-export interface TodayView { drop: DailyDrop | null }
+export interface TodayView { drop: DailyDrop | null; /** people in the game right now */ online: number }
 export interface DailyDrop { title: string; stationId: string; label: string; x: number; y: number; bonus: number; done: boolean }
 /** Everything the booth's big screen shows. Positions only — no names, no callsigns. */
 export interface ScreenView {

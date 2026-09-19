@@ -97,6 +97,22 @@ the pixel ratio in the corner. It is the tool for the real-phone pass.
   Radii 10 / 14 / 22. One shadow. Motion 120–240 ms, off with "reduce motion".
 - The brand wordmark appears on the first screen and the big screen — not over the game.
 
+### The first ten seconds
+
+- **The link, before it is opened**: a share card (`public/og.png`, 1200 × 630) in the game's own palette and type, the X
+  as the tab icon and the home-screen icon, a paper-coloured browser bar. Sources are `tools/brand/*.html`;
+  `node tools/brand/make.mjs` renders them with the Chromium already on the machine. The share picture's address is
+  made absolute at build time from `SITE_URL` (or the domain Vercel gives the build) — WhatsApp and LinkedIn ignore
+  relative ones.
+- **The first screen** says how many people are in the expo right now (the real presence count, shown from 2 up).
+- **Landing is one unbroken camera move** from the X — where the first screen was looking — up, across the hall and
+  down behind the player: the goal and the way to it are seen before the first step. 2.4 s; the player can walk at
+  once, and turning the view by hand ends it.
+- **How to move is said once**, in a dark bar above the action button, in the words for the device in hand (tap and
+  drag on a phone; click, WASD, drag and scroll with a mouse). It leaves after a few steps and never returns.
+- **The card is on the table before the form is finished**: at the X, a preview of the card fills in as the name,
+  company and contact are typed.
+
 ### With a mouse
 
 The game is built for a thumb first. On a desk it must not feel like a phone page in a big window:

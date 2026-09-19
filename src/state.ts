@@ -37,6 +37,8 @@ export const myBooths = signal<HostStation[]>([]);
 /** The place the player is standing in (a café, a stage, the photo booth…), and whether they have sat down there. */
 export const herePlace = signal<Place | null>(null);
 export const seated = signal(false);
+/** Shown once, right after landing, until the player has walked a few steps: how to move. */
+export const moveHint = signal(false);
 /** The photo just taken, as a data URL. */
 export const photoShot = signal<string | null>(null);
 /** Halls and places this browser has walked into: "hall:7", "place:cafe". A memory, not a score. */

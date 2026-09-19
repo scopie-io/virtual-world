@@ -114,7 +114,7 @@ export function createApp({ game, stations, social, crews, venue, director, gc, 
   player.post('/hidden', async (c) => { await venue.setHidden(pid(c), (await body(c)).hidden === true); return ok(c, null); });
 
   /* what is special today: the booth of the day, set by the crew */
-  player.get('/today', async (c) => ok(c, { drop: await ops.drop(pid(c)) }, [], false));
+  player.get('/today', async (c) => ok(c, { drop: await ops.drop(pid(c)), online: await game.onlineNow() }, [], false));
 
   /* Mission Director (switched off) */
   player.get('/missions', async (c) => ok(c, { ...(await director.view(pid(c))), drop: await ops.drop(pid(c)) }, [], false));

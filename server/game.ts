@@ -199,6 +199,9 @@ export class Game {
   }
 
   /** deck = "my avatar is following my real steps". Only honoured for players who are verifiably on site. */
+  /** How many people are in the game right now. */
+  onlineNow(): Promise<number> { return this.presence.online(this.now()); }
+
   async ping(id: string, pos: PresencePing, isSpawn: boolean): Promise<{ holograms: Hologram[]; events: XpEvent[]; online: number; deck: boolean }> {
     if (![pos.x, pos.y, pos.h].every(Number.isFinite)) throw new GameError('bad_pos', 'Bad position');
     if (isSpawn && ![...Object.values(this.level.spawns), ...this.level.lifts].some((s) => Math.hypot(s.x - pos.x, s.y - pos.y) < 4)) isSpawn = false;

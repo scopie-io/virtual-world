@@ -3,7 +3,7 @@ import type { Engine } from '../game/engine';
 import { api, ApiError } from '../net/api';
 import { MISSION_STAMPS, POINTS, ROLE_INFO, chapters, type Role } from '../../shared/rules';
 import type { PassportInput } from '../../shared/types';
-import { atLaunchPad, bootError, bootNote, distToGoal, goalVia, guideOn, guideTarget, herePlace, journey, level, me, modal, nearLift, nearStation, panelStation, phase, seated, stampedSet, stationMap, toast, toasts } from '../state';
+import { atLaunchPad, bootError, bootNote, distToGoal, goalVia, guideOn, guideTarget, herePlace, journey, level, me, modal, moveHint, nearLift, nearStation, online, panelStation, phase, seated, stampedSet, stationMap, toast, toasts } from '../state';
 import { facts } from '../game/facts';
 import { MapSheet, PhotoSheet } from './world-sheets';
 import { DemoChip, TicketDemoHint, TourSheet } from '../demo/Tour';
@@ -67,7 +67,7 @@ function Start({ engine }: Eng) {
     <>
       <Brand corner />
       <div class="sheet start">
-        <div class="k">Mission X · MIHAS 2026</div>
+        <div class="k">Mission X · MIHAS 2026{online.value > 1 && <span class="live">{online.value} in the expo now</span>}</div>
         <h1>Find the <b>X</b>.</h1>
         <p class="lead">The whole MIHAS expo, live on your phone. Walk it, stamp booths, meet people — and find the X for your free digital business card.</p>
         <div class="doors">
@@ -84,6 +84,8 @@ function Start({ engine }: Eng) {
 
 const Icon = ({ d }: { d: string }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>;
 const ICONS = { map: 'M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14', express: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8.5 14a4.5 4.5 0 0 0 7 0M9 9.5v.5M15 9.5v.5', menu: 'M4 7h16M4 12h16M4 17h16' };
+
+const FINE_POINTER = typeof matchMedia === 'function' && matchMedia('(hover:hover) and (pointer:fine)').matches;
 
 /** Numbers that change roll to their new value: a score that ticks up is felt, one that flips is missed. */
 function useRolling(value: number, ms = 650): number {
@@ -168,6 +170,7 @@ function Hud({ engine }: Eng) {
 
       {/* bottom-centre: the one thing you can do right here */}
       <div class="action">
+        {moveHint.value && !sitting && <p class="hint" role="status">{FINE_POINTER ? <>Click where you want to go, or use <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>. Drag to look around, scroll to zoom.</> : 'Tap where you want to go, or drag the lower left of the screen. Drag elsewhere to look around.'}</p>}
         {sitting && <SeatNote />}
         {sitting && <button class="btn big" onClick={() => eng?.stand()}>Stand up<kbd>E</kbd></button>}
         {nearLift.value && <div class="liftrow">{nearLift.value.others.map((l) => <button key={l.deck} class="btn lift" onClick={() => engine()?.useLift(l)}>Level {l.deck}<small>{level.value?.decks.find((d) => d.level === l.deck)?.label.split(' · ')[1]}</small></button>)}</div>}
@@ -186,6 +189,18 @@ function Hud({ engine }: Eng) {
 
 /* ------------------------------------------------------------------ the card, the prize code, the ending */
 
+/** The card, filling in as it is typed: the reward is on the table before the form is finished. */
+function CardPreview({ f }: { f: PassportInput }) {
+  const initials = f.name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('');
+  return (
+    <div class="pcard" aria-hidden="true">
+      <div class="pcard-mono">{initials || 'X'}</div>
+      <div class="pcard-who"><strong class={f.name ? '' : 'ph'}>{f.name || 'Your name'}</strong><span class={f.role || f.company ? '' : 'ph'}>{[f.role, f.company].filter(Boolean).join(' · ') || 'Role · Company'}</span>{f.showContact && <small class={f.phone || f.email ? '' : 'ph'}>{[f.phone, f.email].filter(Boolean).join(' · ') || 'Phone · Email'}</small>}</div>
+      <div class="pcard-qr"><i /><i /><i /><i /><i /><i /><i /><i /><i /></div>
+    </div>
+  );
+}
+
 function CardForm() {
   const exhibitor = me.value?.cls === 'exhibitor';
   const [f, setF] = useState<PassportInput>({ name: '', company: '', role: '', phone: '', email: '', showContact: true, consentMarketing: false, consentNotice: false });
@@ -201,6 +216,7 @@ function CardForm() {
     <Sheet k={exhibitor ? 'First · who runs the booth' : 'You found the X'} title="Your free digital business card">
       <form onSubmit={submit}>
         <p class="lead">{exhibitor ? 'Your card tells visitors and our crew who is behind the booth. It takes a minute, and it is yours to keep.' : 'Built for you now, yours to keep: a card with its own link and QR. It is what you swap with people and leave at booths.'}</p>
+        <CardPreview f={f} />
         <label>Name<input required maxLength={80} autocomplete="name" value={f.name} onInput={set('name')} /></label>
         <label>Company<input required maxLength={100} autocomplete="organization" value={f.company} onInput={set('company')} /></label>
         <label>Role<input maxLength={80} autocomplete="organization-title" value={f.role} onInput={set('role')} /></label>

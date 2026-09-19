@@ -11,13 +11,12 @@ import { Input } from './input';
 import { placeAt, taken, type Seat } from './places';
 import { RemoteTrack } from './remote';
 import { BoothPicker } from './pick';
+import { newMover, stepMover, RUN_SPEED } from './mover';
 import { hallCards, hallLine } from './facts';
 import { api, ApiError } from '../net/api';
 import { sfx } from '../sfx';
-import { atLaunchPad, currentDeck, distToGoal, goalVia, guideOn, guideTarget, herePlace, markSeen, me, modal, nearLift, nearStation, online, panelStation, photoShot, seated, stampedSet, stationMap, stations, toast } from '../state';
+import { atLaunchPad, currentDeck, distToGoal, goalVia, guideOn, guideTarget, herePlace, markSeen, me, modal, moveHint, nearLift, nearStation, online, panelStation, photoShot, seated, seen, stampedSet, stationMap, stations, toast } from '../state';
 
-const RUN_SPEED = 6.5;          // m/s — brisk on purpose: halls are long
-const ACCEL = 9;                // how quickly the astronaut reaches that speed, and stops: a little weight
 const JUMP_S = 0.52, JUMP_M = 1.0;
 const PING_MS = 2000;
 const TRAIL_STEP = 1.5, TRAIL_MAX = 220;
@@ -39,10 +38,12 @@ export class Engine {
   private nav: NavGrid;
   private input: Input;
   private player: Astronaut | null = null;
-  private pos: P2 = { x: 0, y: 0 };
-  private heading = 0;
-  private speed01 = 0;
-  private route: P2[] = [];
+  private mv = newMover(); // where the astronaut is and where it is going: mover.ts
+  private get pos(): P2 { return this.mv.pos; } private set pos(p: P2) { this.mv.pos = p; }
+  private get heading() { return this.mv.heading; } private set heading(h: number) { this.mv.heading = h; }
+  private get speed01() { return this.mv.speed01; }
+  private get route(): P2[] { return this.mv.route; } private set route(r: P2[]) { this.mv.route = r; this.mv.stall = 0; this.mv.replans = 0; }
+  private get vel(): P2 { return this.mv.vel; }
   private cam = { yaw: 0, pitch: 1.0, dist: 170, want: 26, goalYaw: 0, goalPitch: 1.0 };
   private camTarget = new THREE.Vector3();
   private trail: THREE.InstancedMesh;
@@ -58,9 +59,11 @@ export class Engine {
   private fps = { acc: 0, n: 0, dpr: 1, at: 0 };
   private perf: { el: HTMLDivElement; t0: number; frames: number; cpu: number; parts: Record<string, number> } | null = null;
   private ui = 1; // the interface scale from ui.css (--ui): label boxes grow with the type
-  private vel = { x: 0, y: 0 };
   private pose: Pose = ''; private poseUntil = 0; private jumpT = 1; private seat: Seat | null = null; private wantBeforeSit = 30;
   private liftT = 1; private hallNow: number | null = null;
+  /** the opening: one unbroken move from the X, where the first screen was looking, to the player at the door */
+  private intro: { t: number; from: THREE.Vector3; dist: number; yaw: number; toYaw: number } | null = null;
+  private walked = 0;
   private seatGoal: Seat | null = null;
   private picker: BoothPicker;
   private mouse: { x: number; y: number } | null = null; private hoverAt = 0;
@@ -93,7 +96,7 @@ export class Engine {
     this.input = new Input(this.renderer.domElement, {
       onTap: (x, y) => this.tapMove(x, y),
       onHover: (at) => { this.mouse = at; this.hoverAt = 0; },
-      onOrbit: (dYaw, dPitch) => { this.cam.goalYaw += dYaw; this.cam.goalPitch = THREE.MathUtils.clamp(this.cam.goalPitch + dPitch, 0.62, 1.32); }, // from a low three-quarter view to almost straight down
+      onOrbit: (dYaw, dPitch) => { this.intro = null; this.cam.goalYaw += dYaw; this.cam.goalPitch = THREE.MathUtils.clamp(this.cam.goalPitch + dPitch, 0.62, 1.32); }, // from a low three-quarter view to almost straight down
       onZoom: (f) => { this.cam.want = THREE.MathUtils.clamp(this.cam.want * f, 12, 95); },
       enabled: () => !modal.value,
     });
@@ -127,7 +130,7 @@ export class Engine {
 
     if (new URLSearchParams(location.search).has('perf')) {
       this.perf = { el: Object.assign(document.createElement('div'), { className: 'perf' }), t0: performance.now(), frames: 0, cpu: 0, parts: {} }; host.appendChild(this.perf.el);
-      (window as unknown as { __mx?: unknown }).__mx = { scene: this.world.scene, info: () => ({ ...this.renderer.info.render, dpr: this.fps.dpr, holos: this.holos.size }) };
+      (window as unknown as { __mx?: unknown }).__mx = { scene: this.world.scene, mover: () => ({ x: +this.pos.x.toFixed(2), y: +this.pos.y.toFixed(2), route: this.route.length, next: this.route[0] ?? null, speed: +this.speed01.toFixed(2), stall: +this.mv.stall.toFixed(2), replans: this.mv.replans, seat: !!this.seat, stick: { ...this.input.move } }), info: () => ({ ...this.renderer.info.render, dpr: this.fps.dpr, holos: this.holos.size }) };
     }
 
     // a slow turn around the X behind the first screen
@@ -150,7 +153,10 @@ export class Engine {
     this.player?.dispose();
     this.player = new Astronaut({ spec: defaultAvatar(role), jacket: role ? ROLE_INFO[role].color : undefined, marker: THEME.blue });
     this.world.scene.add(this.player.group);
-    this.cam.yaw = this.cam.goalYaw = spawn === 'short' ? 0 : Math.PI / 2; this.cam.dist = 150; this.cam.want = 26; this.resize();
+    // No cut: the camera leaves the X, rises, crosses the hall and settles behind the player. 2.4 s, and the player can walk at once.
+    const toYaw = spawn === 'short' ? 0 : Math.PI / 2, yaw = toYaw + Math.atan2(Math.sin(this.cam.yaw - toYaw), Math.cos(this.cam.yaw - toYaw)); // the short way round
+    this.intro = { t: 0, from: this.camTarget.clone(), dist: this.cam.dist, yaw, toYaw }; this.cam.yaw = this.cam.goalYaw = yaw; this.cam.want = 26; this.resize();
+    this.walked = 0; if (!seen.value.has('hint:move')) moveHint.value = true;
     this.firstPing = true; this.pingAt = 0; this.trailAt = 0;
     const a = me.value?.anchor;
     if (a && Date.now() - a.at < ARRIVAL_FRESH_MS) this.arriveAt(a.stationId, a.at); else if (a) this.arrivalSeen = a.at;
@@ -196,29 +202,19 @@ export class Engine {
   /* ---------------- movement ---------------- */
 
   private movePlayer(dt: number) {
-    const p = this.player!, inp = this.input.move; let dx = 0, dy = 0;
+    const p = this.player!, inp = this.input.move; let stick: P2 | null = null;
     if (this.seat) { // sitting: any push on the stick, or a tap on the floor, stands you up
       if (inp.x || inp.y || this.route.length) this.stand();
       else { toWorld(this.pos.x, this.pos.y, 0, p.group.position); p.group.rotation.y = this.heading; p.animate(dt, 0); return; }
     }
     if (inp.x || inp.y) {
-      this.route = []; this.seatGoal = null;
+      this.seatGoal = null;
       const s = Math.sin(this.cam.yaw), c = Math.cos(this.cam.yaw);
       const wx = c * inp.x - s * inp.y, wz = -s * inp.x - c * inp.y;   // screen → world
-      dx = wx; dy = -wz;
-    } else if (this.route.length) {
-      const n = this.route[0]!, ddx = n.x - this.pos.x, ddy = n.y - this.pos.y, l = Math.hypot(ddx, ddy);
-      if (l < 0.35) this.route.shift(); else { dx = ddx / l; dy = ddy / l; }
-    } else if (this.seatGoal) this.takeSeat(this.seatGoal); // walked up to the chair: sit
-    // velocity eases toward what the stick asks for: starts and stops have a little weight, turns stay sharp
-    const v = this.vel, k = Math.min(1, dt * ACCEL); v.x += (dx * RUN_SPEED - v.x) * k; v.y += (dy * RUN_SPEED - v.y) * k;
-    const sp = Math.hypot(v.x, v.y);
-    if (sp > 0.05) {
-      const next = this.nav.move(this.pos, v.x * dt, v.y * dt), moved = Math.hypot(next.x - this.pos.x, next.y - this.pos.y);
-      if (moved < sp * dt * 0.2) { v.x *= 0.5; v.y *= 0.5; } // walked into something
-      this.pos = next; this.speed01 = Math.min(1, moved / Math.max(1e-4, dt) / RUN_SPEED);
-      if (dx || dy) { const want = Math.atan2(dx, -dy); let d = want - this.heading; d = Math.atan2(Math.sin(d), Math.cos(d)); this.heading += d * Math.min(1, dt * 12); } // rotation.y that points the model (+z) along travel; world z = −plan y
-    } else { v.x = v.y = 0; this.speed01 = 0; }
+      stick = { x: wx, y: -wz };
+    } else if (!this.route.length && this.seatGoal) this.takeSeat(this.seatGoal); // walked up to the chair: sit
+    const moved = stepMover(this.mv, this.nav, dt, stick);
+    if (moveHint.value && (this.walked += moved) > 4) { moveHint.value = false; markSeen('hint:move'); }
 
     const now = performance.now();
     if (this.pose && this.pose !== 'sit' && now > this.poseUntil) this.setPose('');
@@ -389,6 +385,16 @@ export class Engine {
 
   private updateCamera(dt: number) {
     const c = this.cam, riding = this.liftT < 1; if (riding) this.liftT = Math.min(1, this.liftT + dt / 1.5);
+    const it = this.intro;
+    if (it) {
+      it.t = Math.min(1, it.t + dt / 2.4); const k = it.t, e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; // ease in and out
+      const to = toWorld(this.pos.x, this.pos.y, 1.2);
+      this.camTarget.lerpVectors(it.from, to, e); c.dist = it.dist + (c.want - it.dist) * e + Math.sin(Math.PI * e) * 22; c.yaw = c.goalYaw = it.yaw + (it.toYaw - it.yaw) * e;
+      if (k >= 1) this.intro = null;
+      const cp = Math.cos(c.pitch), sp = Math.sin(c.pitch);
+      this.camera.position.set(this.camTarget.x + Math.sin(c.yaw) * cp * c.dist, this.camTarget.y + sp * c.dist, this.camTarget.z + Math.cos(c.yaw) * cp * c.dist);
+      this.camera.lookAt(this.camTarget); return;
+    }
     const want = riding ? c.want + 95 * Math.sin(Math.PI * this.liftT) : c.want;
     c.dist += (want - c.dist) * Math.min(1, dt * (this.player ? (riding ? 5 : 2.2) : 1));
     c.yaw += (c.goalYaw - c.yaw) * Math.min(1, dt * 14); c.pitch += (c.goalPitch - c.pitch) * Math.min(1, dt * 14);
