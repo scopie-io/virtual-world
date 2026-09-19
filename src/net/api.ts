@@ -1,4 +1,4 @@
-import type { ApiResult, BoardKind, BoardRow, Contact, GcView, Hologram, HostCode, HostLead, HostStation, LinkCode, LinkPeek, PassportInput, PresencePing, StampRequest, StationClaimInput, StationView, TodayView } from '../../shared/types';
+import type { ApiResult, BoardKind, BoardRow, Contact, Hologram, HostCode, HostLead, HostStation, LinkCode, LinkPeek, PassportInput, PresencePing, StampRequest, StationClaimInput, StationView, TodayView } from '../../shared/types';
 import type { Role } from '../../shared/rules';
 import type { ShareField } from '../../shared/rules';
 import { me, showEvents } from '../state';
@@ -49,6 +49,4 @@ export const api = {
   note: (key: string, note: string) => call<null>('POST', '/api/contacts/note', { key, note }),
   revokeContact: (key: string) => call<null>('POST', '/api/contacts/revoke', { key }),
 
-  /* switched off (FEATURES.groundControl) — the world renderer still knows how to draw it */
-  gcWaypoint: (x: number, y: number) => call<GcView>('POST', '/api/gc/waypoint', { x, y }),
 };

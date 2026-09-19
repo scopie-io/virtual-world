@@ -3,7 +3,7 @@ import type { Engine } from '../game/engine';
 import { api, ApiError } from '../net/api';
 import { MISSION_STAMPS, POINTS, ROLE_INFO, chapters, type Role } from '../../shared/rules';
 import type { PassportInput } from '../../shared/types';
-import { atLaunchPad, bootError, bootNote, distToGoal, goalVia, guideOn, guideTarget, journey, level, me, modal, nearLift, nearStation, online, panelStation, phase, stampedSet, stationMap, toast, toasts } from '../state';
+import { atLaunchPad, bootError, bootNote, distToGoal, goalVia, guideOn, guideTarget, journey, level, me, modal, nearLift, nearStation, panelStation, phase, stampedSet, stationMap, toast, toasts } from '../state';
 import { DemoChip, TicketDemoHint, TourSheet } from '../demo/Tour';
 import { Qr, Sheet, hex } from './common';
 import { BoardSheet, BoothSheet, ClaimSheet, ContactsSheet, FindSheet, MenuSheet, MyBoothSheet, SwapSheet } from './sheets';
@@ -14,7 +14,6 @@ export function App({ engine }: Eng) {
   const m = modal.value;
   return (
     <>
-      <Brand />
       {phase.value === 'boot' && <Splash text={bootNote.value} />}
       {phase.value === 'error' && <Splash text={bootError.value} error />}
       {phase.value === 'start' && <Start engine={engine} />}
@@ -37,12 +36,12 @@ export function App({ engine }: Eng) {
   );
 }
 
-const Brand = () => (
-  <div class="brand"><span>lean<b>.x</b>digital</span><i /><span>ne<b>x</b>ova</span></div>
+const Brand = ({ corner }: { corner?: boolean }) => (
+  <div class={'brand' + (corner ? ' corner' : '')}><span>lean<b>.x</b>digital</span><i /><span>ne<b>x</b>ova</span></div>
 );
 
 const Splash = ({ text, error }: { text: string; error?: boolean }) => (
-  <div class="splash"><div class={error ? 'x err' : 'x'}>✕</div><p>{text}</p>{error && <button class="btn" onClick={() => location.reload()}>Try again</button>}</div>
+  <div class="splash"><div class={error ? 'xmark err' : 'xmark'} aria-hidden="true" /><p>{text}</p>{error && <button class="btn" onClick={() => location.reload()}>Try again</button>}</div>
 );
 
 /* ------------------------------------------------------------------ start: two doors */
@@ -56,31 +55,36 @@ function Start({ engine }: Eng) {
       if (role === 'exhibitor') modal.value = me.value?.passport ? 'mybooth' : 'card';
     } catch (e) { toast(e instanceof ApiError ? e.message : 'Could not start', undefined, 'warn'); setBusy(null); }
   };
+  const door = (role: Role, title: string, sub: string) => (
+    <button class={'door' + (was === role ? ' on' : '')} disabled={!!busy} onClick={() => go(role)}>
+      <span class="dot" style={{ background: hex(ROLE_INFO[role].color) }} /><strong>{busy === role ? 'Landing…' : title}</strong><small>{sub}</small><span class="go" aria-hidden="true">›</span>
+    </button>
+  );
   return (
-    <div class="sheet suit">
-      <div class="k">Mission X · MIHAS 2026</div>
-      <h1>Find the <b>X</b>.</h1>
-      <p class="lead">The whole MIHAS expo, live on your phone. Walk it, stamp booths, meet people — and find the X for your free digital business card.</p>
-      <div class="classes">
-        <button class={'cls' + (was !== 'exhibitor' ? ' on' : '')} disabled={!!busy} onClick={() => go('visitor')}>
-          <span class="dot" style={{ background: hex(ROLE_INFO.visitor.color) }} />
-          <strong>{busy === 'visitor' ? 'Landing…' : was === 'visitor' ? 'Continue visiting' : "I'm visiting"}</strong><small>One mission, about five minutes. A free gift at the end.</small>
-        </button>
-        <button class={'cls' + (was === 'exhibitor' ? ' on' : '')} disabled={!!busy} onClick={() => go('exhibitor')}>
-          <span class="dot" style={{ background: hex(ROLE_INFO.exhibitor.color) }} />
-          <strong>{busy === 'exhibitor' ? 'Landing…' : was === 'exhibitor' ? 'Back to my booth' : "I'm exhibiting"}</strong><small>Put your booth in the game. Collect visitor leads, free.</small>
-        </button>
+    <>
+      <Brand corner />
+      <div class="sheet start">
+        <div class="k">Mission X · MIHAS 2026</div>
+        <h1>Find the <b>X</b>.</h1>
+        <p class="lead">The whole MIHAS expo, live on your phone. Walk it, stamp booths, meet people — and find the X for your free digital business card.</p>
+        <div class="doors">
+          {door('visitor', was === 'visitor' ? 'Continue visiting' : "I'm visiting", 'One mission, about five minutes. A free gift at the end.')}
+          {door('exhibitor', was === 'exhibitor' ? 'Back to my booth' : "I'm exhibiting", 'Put your booth in the game. Collect visitor leads, free.')}
+        </div>
+        <p class="fine">An expo game by Lean X Digital. Unofficial — not affiliated with MATRADE or MIHAS.</p>
       </div>
-      <p class="fine">An expo game by Lean X Digital. Unofficial — not affiliated with MATRADE or MIHAS.</p>
-    </div>
+    </>
   );
 }
 
 /* ------------------------------------------------------------------ in play: one instruction at a time */
 
+const Icon = ({ d }: { d: string }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>;
+const ICONS = { find: 'M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zm5 12 4 4', swap: 'M7 7h11l-3-3M17 17H6l3 3', menu: 'M4 7h16M4 12h16M4 17h16' };
+
 function Hud({ engine }: Eng) {
   const m = me.value!, j = journey.value!, st = nearStation.value, has = st && stampedSet.value.has(st.id), view = st ? stationMap.value.get(st.id) : undefined;
-  const [stamping, setStamping] = useState(false);
+  const [stamping, setStamping] = useState(false), [open, setOpen] = useState(false);
   const goal = guideTarget.value, stName = st ? view?.company || st.name || 'Booth ' + st.id : '', total = (level.value?.booths.length ?? 1) - 1;
   const trail = guideOn.value && distToGoal.value != null && (goal || (!m.passport && j.kind === 'visitor'));
   const word = j.kind === 'visitor' ? 'Chapter' : 'Step';
@@ -97,42 +101,42 @@ function Hud({ engine }: Eng) {
 
   return (
     <>
-      <div class="rank">
-        <div class="rank-top"><strong>{m.xp.toLocaleString()} points</strong><span style={m.cls ? { color: hex(ROLE_INFO[m.cls].color) } : {}}>{m.callsign}</span></div>
-        <div class="rank-bot"><span title="Booths stamped">◆ {m.stamps.length} / {total.toLocaleString()} booths</span><span title="Cards swapped">⇄ {m.links}</span></div>
-      </div>
-
-      <div class="tools">
-        <button class="chip" onClick={() => (modal.value = 'find')}>Find</button>
-        <button class="chip" onClick={() => (modal.value = 'swap')}>Swap cards</button>
-        <button class="chip" onClick={() => (modal.value = 'menu')} aria-label="Menu">☰</button>
-        <span class="chip ghost">{online.value} here now</span>
-        <DemoChip />
-      </div>
-
-      <div class="mission">
-        <div class="k">{goal ? 'Guiding you to' : j.now ? `${word} ${j.now.n} of ${j.steps.length}` : j.kind === 'visitor' ? 'Mission complete' : 'Your booth is working'}</div>
+      {/* top-left: what to do now. One card, nothing else up here. */}
+      <div class={'objective' + (open ? ' open' : '')} onClick={() => setOpen(!open)}>
+        <div class="top">
+          <span class="k">{goal ? 'Guiding you to' : j.now ? `${word} ${j.now.n} of ${j.steps.length}` : j.kind === 'visitor' ? 'Mission complete' : 'Your booth is working'}</span>
+          <span class="score" title="Points">{m.xp.toLocaleString()}</span>
+        </div>
         <h2>{goal ? goal.label : j.now ? j.now.title : 'Free play'}</h2>
-        {!goal && <p>{j.now ? j.now.todo : 'Stamp more booths, meet more people, climb the board.'}</p>}
-        <div class="dots" role="img" aria-label={`${j.done} of ${j.steps.length} done`}>{j.steps.map((s) => <i key={s.n} class={s.done ? 'on' : s === j.now ? 'now' : ''} />)}</div>
-        {!goal && j.kind === 'visitor' && j.now?.n === 3 && <div class="via">{Math.min(m.stamps.length, MISSION_STAMPS)} of {MISSION_STAMPS} stamped — walk up to any booth</div>}
-        {!goal && j.kind === 'visitor' && j.now?.n === 4 && <div class="dist"><span>Met someone?</span><button class="link" onClick={() => (modal.value = 'swap')}>Swap cards</button></div>}
-        {!goal && j.kind === 'visitor' && j.now?.n === 5 && <div class="dist"><button class="link" onClick={() => (modal.value = 'prize')}>My prize code</button><button class="link" onClick={toX}>Guide me to the X</button></div>}
-        {!goal && j.kind === 'exhibitor' && <div class="dist"><span /><button class="link" onClick={() => (modal.value = m.passport ? 'mybooth' : 'card')}>{m.hosting.length ? 'Open my booth' : 'Set up my booth'}</button></div>}
-        {guideOn.value && goalVia.value && trail && <div class="via">⇅ {goalVia.value}</div>}
+        {!goal && <p>{j.now ? j.now.todo : `${m.stamps.length} of ${total.toLocaleString()} booths stamped. Keep going, meet more people, climb the board.`}</p>}
+        {!goal && <div class="dots" role="img" aria-label={`${j.done} of ${j.steps.length} done`}>{j.steps.map((s) => <i key={s.n} class={s.done ? 'on' : s === j.now ? 'now' : ''} />)}</div>}
+        {!goal && j.kind === 'visitor' && j.now?.n === 3 && <div class="via">{Math.min(m.stamps.length, MISSION_STAMPS)} of {MISSION_STAMPS} stamped</div>}
+        {!goal && j.kind === 'visitor' && j.now?.n === 4 && <div class="go-row"><span>Met someone?</span><button class="btn primary" onClick={(e) => { e.stopPropagation(); modal.value = 'swap'; }}>Swap cards</button></div>}
+        {!goal && j.kind === 'visitor' && j.now?.n === 5 && <div class="go-row"><button class="link" onClick={(e) => { e.stopPropagation(); toX(); }}>Guide me to the X</button><button class="btn primary" onClick={(e) => { e.stopPropagation(); modal.value = 'prize'; }}>My prize code</button></div>}
+        {!goal && j.kind === 'exhibitor' && <div class="go-row"><span /><button class="btn primary" onClick={(e) => { e.stopPropagation(); modal.value = m.passport ? 'mybooth' : 'card'; }}>{m.hosting.length ? 'Open my booth' : 'Set up my booth'}</button></div>}
+        {trail && goalVia.value && <div class="via">{goalVia.value}</div>}
         {trail && (
-          <div class="dist"><span>{distToGoal.value} m {goalVia.value ? 'to the lift' : goal ? 'to go' : 'to the X'}</span>
-            <span>{goal && <button class="link" onClick={() => (guideTarget.value = null)}>Cancel</button>} <button class="link" onClick={() => engine()?.autopilot()}>Take me there</button></span></div>
+          <div class="go-row"><span>{distToGoal.value} m {goalVia.value ? 'to the lift' : ''}</span>
+            <span>{goal && <button class="link" style={{ marginRight: '12px' }} onClick={(e) => { e.stopPropagation(); guideTarget.value = null; }}>Cancel</button>}<button class="btn primary" onClick={(e) => { e.stopPropagation(); engine()?.autopilot(); }}>Take me there</button></span></div>
         )}
       </div>
 
+      {/* bottom-right, under the thumb: the three things you can always do */}
+      <div class="dock">
+        <DemoChip />
+        <button aria-label="Find a booth" title="Find" onClick={() => (modal.value = 'find')}><Icon d={ICONS.find} /></button>
+        <button aria-label="Swap cards" title="Swap cards" onClick={() => (modal.value = 'swap')}><Icon d={ICONS.swap} /></button>
+        <button aria-label="Menu" title="Menu" onClick={() => (modal.value = 'menu')}><Icon d={ICONS.menu} /></button>
+      </div>
+
+      {/* bottom-centre: the one thing you can do right here */}
       <div class="action">
-        {nearLift.value && <div class="liftrow">{nearLift.value.others.map((l) => <button key={l.deck} class="btn lift" onClick={() => engine()?.useLift(l)}>⇅ Level {l.deck}<small>{level.value?.decks.find((d) => d.level === l.deck)?.label.split(' · ')[1]}</small></button>)}</div>}
+        {nearLift.value && <div class="liftrow">{nearLift.value.others.map((l) => <button key={l.deck} class="btn lift" onClick={() => engine()?.useLift(l)}>Level {l.deck}<small>{level.value?.decks.find((d) => d.level === l.deck)?.label.split(' · ')[1]}</small></button>)}</div>}
         {atLaunchPad.value && !m.passport && <button class="btn primary big" onClick={() => (modal.value = 'card')}>Get my free card</button>}
         {atLaunchPad.value && m.passport && !m.docked && <button class="btn primary big" onClick={() => (modal.value = 'prize')}>Show my prize code</button>}
-        {!atLaunchPad.value && st && !has && <button class="btn primary big" disabled={stamping} onClick={doStamp}>{stamping ? 'Stamping…' : `Stamp ${stName} · +${POINTS.stamp}`}</button>}
+        {!atLaunchPad.value && st && !has && <button class="btn primary big" disabled={stamping} onClick={doStamp}>{stamping ? 'Stamping…' : `Stamp · +${POINTS.stamp}`}</button>}
         {!atLaunchPad.value && st && (
-          <button class={'chip' + (has ? ' on' : '')} onClick={() => { panelStation.value = st; modal.value = 'booth'; }}>{has ? '◆ ' : ''}{stName}{view ? (view.hosted ? ' · at the counter now' : ' · online') : ''} ›</button>
+          <button class={'chip' + (has ? ' on' : '')} onClick={() => { panelStation.value = st; modal.value = 'booth'; }}>{stName}{view ? (view.hosted ? ' · at the counter now' : ' · online') : ''} ›</button>
         )}
       </div>
     </>

@@ -1,5 +1,5 @@
 import { signal, computed } from '@preact/signals';
-import type { Booth, DailyDrop, GcView, HostStation, LevelData, Lift, Me, MissionsView, SectorsView, StationView, XpEvent } from '../shared/types';
+import type { Booth, DailyDrop, HostStation, LevelData, Lift, Me, StationView, XpEvent } from '../shared/types';
 import { boothSteps, chapters, type Chapter } from '../shared/rules';
 
 export type Phase = 'boot' | 'start' | 'play' | 'error';
@@ -34,14 +34,6 @@ export const drop = signal<DailyDrop | null>(null);
 export const myBooths = signal<HostStation[]>([]);
 /** A card-swap code that arrived in the URL (scanned with the phone's own camera). */
 export const pendingLink = signal<string | null>(null);
-
-/* Switched-off systems (FEATURES in shared/rules.ts). Nothing fills these in the simple game; the world renderer still reads them. */
-export const sectors = signal<SectorsView | null>(null);
-export const missions = signal<MissionsView | null>(null);
-export const gcView = signal<GcView | null>(null);
-export const gcMarkerMode = signal(false);
-export interface DeckState { on: boolean; label: string; sigma: number; since: number; tracking: boolean }
-export const deck = signal<DeckState>({ on: false, label: '', sigma: 0, since: 0, tracking: false });
 
 export interface Toast { id: number; title: string; sub?: string; tone: 'xp' | 'info' | 'warn' }
 export const toasts = signal<Toast[]>([]);

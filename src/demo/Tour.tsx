@@ -15,7 +15,7 @@ const DemoTag = () => <span class="demotag">Demo</span>;
 /** HUD chip that opens the guide. */
 export function DemoChip() {
   if (!demo.value) return null;
-  return <button class="chip demochip" onClick={() => (modal.value = 'tour')}>Demo guide</button>;
+  return <button class="demo" onClick={() => (modal.value = 'tour')}>Demo guide</button>;
 }
 
 /** Booth sheet: what is on the exhibitor's counter right now — their live QR (as digits to type) and the printed one. */

@@ -1,6 +1,5 @@
 import { render } from 'preact';
-import './styles.css';
-import './m2.css';
+import './ui.css';
 import { App } from './ui/App';
 import { Engine, pickQuality } from './game/engine';
 import { api, ApiError } from './net/api';

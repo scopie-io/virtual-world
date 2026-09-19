@@ -194,7 +194,7 @@ test('avatar editor (switched off in the simple game): catalog-validated, reward
   const s = level.spawns.short;
   await a.post('/api/presence', { x: s.x, y: s.y, h: 0, spawn: true });
   const seen = (await b.post('/api/presence', { x: s.x + 1, y: s.y, h: 0, spawn: true })).json.data.holograms;
-  assert.equal(seen[0].av, '3.0.1.1.6.0.0.0.0');
+  assert.equal(seen[0].av, '3.0.1.5.6.0.0.0.0');
 });
 
 test('crews: influence decides the sector at the tick; active members of the holder are paid', async () => {

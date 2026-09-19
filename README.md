@@ -4,6 +4,8 @@ The whole MIHAS 2026 expo — three levels, 1,599 booths — live in the browser
 arrive, find the X (Booth **8H18B**) for a free digital business card, stamp five booths, swap cards, and claim a gift at
 the real booth. Exhibitors bring their booth online, show its QR at the counter and collect the cards visitors leave.
 
+**How it looks, on one page: [`docs/design-system.md`](docs/design-system.md)** — one palette (`src/theme.ts` + `src/ui.css`), what is in the world and what was removed, why it is sharp on phones, and the interface rules.
+
 **The game on one page: [`docs/game-rules.md`](docs/game-rules.md).** That page is the source of truth for rules and
 wording; the numbers are in `shared/rules.ts`.
 
@@ -217,6 +219,8 @@ The server refuses to boot in production without `MX_SECRET` and `CREW_PIN`. It 
 - Personal data never reaches other players — they see callsign, class, rank, position only.
 
 ## Verified vs not yet verified
+
+**Verified on this machine (visual pass, 19 Sep):** 20 tests; browser run of the static build at phone size (375×812, 2× pixel density) and desktop: first screen with the X framed above the sheet, fly-in, objective card, thumb dock, bottom sheets, trail, tap ring, booth-name labels without overlaps, stamped roofs, online booths and counter markers, people in role jackets, zoomed-out view of Level 2, crew sign-in page in the new theme. No console errors. **Not verified:** a real phone's GPU (the sharpness changes are chosen for it — antialiasing on, real pixel density — but frame rate on low-end Android is unmeasured), the big screen page and lifts after the restyle.
 
 **Verified on this machine (simplified game, 19 Sep):** 20 tests. Two new journey tests drive the whole visitor mission (names, fixed points, chapter order, the board line, switched-off systems answering "off") and the three exhibitor steps through the HTTP API; the M2–M4 engine tests run with their features switched on and the new numbers; the demo-world test runs the simplified cast. Browser run on the static no-backend build: two-door start → Chapter 2 HUD with five dots → autopilot → card (+200, name becomes "Demo T.") → prize code → stamps at +10 → real-booth scan at a simulated exhibitor (+50, "met in person", +150 booth of the day) → leave card (+10) → simulated crew scan → the ending → menu (5 items) → "I am exhibiting" → find booth → online → My booth with QR, visits and leads. Not re-verified in the browser after this change: the crew console and big screen pages (their API is covered by tests), and lifts.
 

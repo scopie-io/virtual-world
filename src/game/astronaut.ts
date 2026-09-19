@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { CATALOG, type AvatarSpec, type CarryKind, type SmileKind, type TopOption } from '../../shared/avatar';
 
 // The brand mascot from primitives: helmet, black visor, LED smile, ear ring — dressed from an AvatarSpec.
-// Placeholder for the rigged glTF character (Bible §6): the class API is what the rest of the game depends on.
+// In the game everyone wears the same suit; the jacket colour says who they are (blue visitor, green exhibitor).
+// Placeholder for a rigged glTF character: the class API is what the rest of the game depends on.
 
 const geo = {
   helmet: new THREE.SphereGeometry(0.56, 24, 18),
@@ -18,7 +19,8 @@ const geo = {
   leg: new THREE.CapsuleGeometry(0.14, 0.34, 4, 8),
   arm: new THREE.CapsuleGeometry(0.11, 0.34, 4, 8),
   shoe: new THREE.BoxGeometry(0.24, 0.14, 0.4),
-  ring: new THREE.RingGeometry(0.62, 0.78, 28),
+  shadow: new THREE.CircleGeometry(0.62, 28),
+  marker: new THREE.RingGeometry(0.78, 0.98, 40),
   box: new THREE.BoxGeometry(1, 1, 1),
   cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, 12),
 };
@@ -30,7 +32,9 @@ function mat(color: number, ghost: boolean, o: { rough?: number; metal?: number;
   if (!m) { m = new THREE.MeshStandardMaterial({ color, roughness: o.rough ?? 0.8, metalness: o.metal ?? 0, map: o.map ?? null, side: o.side ?? THREE.FrontSide, transparent: ghost, opacity: ghost ? 0.58 : 1, depthWrite: !ghost }); mats.set(key, m); }
   return m;
 }
-const ringMat = new THREE.MeshBasicMaterial({ color: 0x6fe3ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+// Grounding: a soft contact shadow under everyone, and a coloured ring under the player so they can always find themselves.
+const onFloor = { transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 } as const;
+const shadowMat = new THREE.MeshBasicMaterial({ color: 0x1b2130, opacity: 0.16, ...onFloor });
 
 /** LED glyphs drawn once per kind: crisp strokes with a soft glow, like the visor in the brand art. */
 const faces = new Map<SmileKind, THREE.Material>();
@@ -86,7 +90,7 @@ function carryMesh(kind: CarryKind, ghost: boolean): THREE.Object3D | null {
   return grp;
 }
 
-export interface AstronautOpts { spec: AvatarSpec; ghost?: boolean }
+export interface AstronautOpts { spec: AvatarSpec; /** overrides the top's colour: the role colour */ jacket?: number; /** a ring on the floor in this colour: "this one is you" */ marker?: number }
 
 export class Astronaut {
   readonly group = new THREE.Group();
@@ -94,21 +98,26 @@ export class Astronaut {
   private legs: THREE.Group[] = [];
   private arms: THREE.Mesh[] = [];
   private phase = Math.random() * 10;
-  private ghost: boolean;
+  private ghost = false;
+  private jacket: number | undefined;
 
-  constructor({ spec, ghost = false }: AstronautOpts) {
-    this.ghost = ghost;
+  constructor({ spec, jacket, marker }: AstronautOpts) {
+    this.jacket = jacket;
     this.group.add(this.rig);
-    if (ghost) { const r = new THREE.Mesh(geo.ring, ringMat); r.rotation.x = -Math.PI / 2; r.position.y = 0.04; this.group.add(r); }
+    const s = new THREE.Mesh(geo.shadow, shadowMat); s.rotation.x = -Math.PI / 2; s.position.y = 0.02; s.renderOrder = 4; this.group.add(s);
+    if (marker != null) { const r = new THREE.Mesh(geo.marker, new THREE.MeshBasicMaterial({ color: marker, ...onFloor })); r.rotation.x = -Math.PI / 2; r.position.y = 0.03; r.renderOrder = 5; this.group.add(r); }
     this.dress(spec);
   }
+
+  setJacket(color: number | undefined) { this.jacket = color; }
 
   /** Rebuild the look in place. Cheap: shared geometry, cached materials. */
   dress(spec: AvatarSpec) {
     this.rig.clear(); this.legs = []; this.arms = [];
     const g = this.ghost, C = CATALOG;
     const top = (C.top[spec.top] ?? C.top[0]!) as TopOption, carry = C.carry[spec.carry]?.kind ?? 'none';
-    const topM = mat(top.color, g, top.pattern === 'batik' ? { map: batikTex(top.color, top.accent ?? 0xffffff) } : {}), sleeveM = mat(top.color, g);
+    const topColor = this.jacket ?? top.color;
+    const topM = mat(topColor, g, this.jacket == null && top.pattern === 'batik' ? { map: batikTex(top.color, top.accent ?? 0xffffff) } : {}), sleeveM = mat(topColor, g);
     const accentM = mat(top.accent ?? 0xf5f7fa, g, { rough: 0.5, side: THREE.DoubleSide });
     const add = <T extends THREE.Object3D>(o: T, x = 0, y = 0, z = 0) => { o.position.set(x, y, z); this.rig.add(o); return o; };
 
@@ -116,7 +125,7 @@ export class Astronaut {
     const visor = add(new THREE.Mesh(geo.visor, mat(C.visor[spec.visor]?.color ?? 0x05070c, g, { rough: 0.08, metal: 0.6 })), 0, 1.7, 0.17); visor.scale.set(1, 0.86, 0.9);
     add(new THREE.Mesh(geo.face, faceMat(C.smile[spec.smile]?.kind ?? 'smile')), 0, 1.68, 0.61);
     add(new THREE.Mesh(geo.body, topM), 0, 0.92, 0);
-    if (top.long) add(new THREE.Mesh(geo.skirt, mat(top.color, g, { side: THREE.DoubleSide })), 0, 0.5, 0);
+    if (top.long) add(new THREE.Mesh(geo.skirt, mat(topColor, g, { side: THREE.DoubleSide })), 0, 0.5, 0);
     if (top.pattern === 'collar') add(new THREE.Mesh(geo.collar, accentM), 0, 1.24, 0.03).rotation.x = Math.PI / 2;
     if (top.pattern === 'sampin') add(new THREE.Mesh(geo.sash, accentM), 0, 0.66, 0);
     if (top.pattern === 'hivis') for (const y of [0.82, 1.04]) add(new THREE.Mesh(geo.band, accentM), 0, y, 0);

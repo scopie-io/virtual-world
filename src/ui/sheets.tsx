@@ -6,7 +6,7 @@ import { Camera, FieldPicker, Qr, Sheet, hex, useCountdown } from './common';
 import { POINTS, ROLE_INFO, type ShareField } from '../../shared/rules';
 import type { BoardRow, Booth, Contact, HostCode, HostLead, LinkCode, LinkPeek } from '../../shared/types';
 import { HostDemoHint, LinkDemoHint, StationDemoHint } from '../demo/Tour';
-import { drop, guideOn, guideTarget, journey, level, me, modal, myBooths, nearStation, panelStation, pendingLink, stampedSet, stationMap, stations, toast } from '../state';
+import { drop, guideOn, guideTarget, journey, level, me, modal, myBooths, nearStation, online, panelStation, pendingLink, stampedSet, stationMap, stations, toast } from '../state';
 
 type Eng = { engine: () => Engine | null };
 const fail = (e: unknown, fallback: string) => toast(e instanceof ApiError ? e.message : fallback, undefined, 'warn', 4500);
@@ -29,7 +29,7 @@ export function BoothSheet({ engine }: Eng) {
       <div class="pills">
         {st && <span class={'pill ' + (st.hosted ? 'live' : 'on')}>{st.hosted ? 'At the counter now' : 'Online'}</span>}
         {st?.status === 'approved' && <span class="pill on">Verified exhibitor</span>}
-        {stamped && <span class="pill gold">◆ Stamped</span>}{met && <span class="pill gold">Met in person</span>}
+        {stamped && <span class="pill gold">Stamped</span>}{met && <span class="pill gold">Met in person</span>}
       </div>
       {st?.offer && <p class="lead">{st.offer}</p>}
       {st?.link && <a class="btn" href={st.link} target="_blank" rel="noopener noreferrer nofollow">Visit their page</a>}
@@ -75,10 +75,9 @@ export function BoothSheet({ engine }: Eng) {
   );
 }
 
-const BRAND_COLORS = [0x17b6d6, 0x3aa8ff, 0x4d7cff, 0xb69cff, 0xff7a66, 0xffc629, 0x9be564, 0x2fd0a0, 0xf5f7fa];
 export function ClaimSheet() {
   const b = panelStation.value, m = me.value!, existing = b ? stationMap.value.get(b.id) : undefined;
-  const [f, setF] = useState({ company: existing?.company ?? (b?.name || m.passport?.company) ?? '', offer: existing?.offer ?? '', link: existing?.link ?? '', color: existing?.color ?? BRAND_COLORS[0]! });
+  const [f, setF] = useState({ company: existing?.company ?? (b?.name || m.passport?.company) ?? '', offer: existing?.offer ?? '', link: existing?.link ?? '', color: existing?.color ?? 0x1e9e6a });
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false);
   const put = (k: 'company' | 'offer' | 'link') => (e: Event) => { const v = (e.target as HTMLInputElement).value; setF((p) => ({ ...p, [k]: v })); };
   if (!b) return null;
@@ -94,7 +93,6 @@ export function ClaimSheet() {
         <label>Company name on the booth<input required maxLength={80} value={f.company} onInput={put('company')} /></label>
         <label>One line for visitors<input maxLength={120} placeholder="e.g. Free samples at 3 pm" value={f.offer} onInput={put('offer')} /></label>
         <label>Website<input maxLength={200} inputMode="url" placeholder="yourcompany.com" value={f.link} onInput={put('link')} /></label>
-        <div class="swatches" role="radiogroup" aria-label="Booth colour">{BRAND_COLORS.map((c) => <button type="button" key={c} role="radio" aria-checked={f.color === c} aria-label={hex(c)} class={'sw' + (f.color === c ? ' on' : '')} style={{ background: hex(c) }} onClick={() => setF((p) => ({ ...p, color: c }))} />)}</div>
         {err && <p class="err" role="alert">{err}</p>}
         <button class="btn primary big" disabled={busy}>{busy ? 'Saving…' : existing ? 'Save' : 'Bring it online'}</button>
         {!existing && <p class="fine">Our crew checks every booth. One that is not yours is removed.</p>}
@@ -286,7 +284,7 @@ export function FindSheet() {
     <Sheet k="Find" title="Where to?">
       <label>Booth number or exhibitor<input autofocus value={q} placeholder="e.g. 7C17, Mamee, UOB" onInput={(e) => setQ((e.target as HTMLInputElement).value)} /></label>
       <div class="results">
-        <button class="result hero" onClick={() => { const h = lv!.hero; guideTarget.value = { x: h.dock.x, y: h.dock.y, label: 'The X · Booth 8H18B' }; guideOn.value = true; modal.value = null; }}><strong>✕ The X — Lean X Digital · nexova</strong><small>Booth 8H18B · Hall 8 · Level 2</small></button>
+        <button class="result hero" onClick={() => { const h = lv!.hero; guideTarget.value = { x: h.dock.x, y: h.dock.y, label: 'The X · Booth 8H18B' }; guideOn.value = true; modal.value = null; }}><strong>The X — Lean X Digital · nexova</strong><small>Booth 8H18B · Hall 8 · Level 2</small></button>
         {hits.map((b) => <button key={b.id} class="result" onClick={() => guideTo(b, name(b))}><strong>{name(b)}</strong><small>Booth {b.id} · Hall {b.hall} · Level {b.deck}{b.sector ? ` · ${b.sector}` : ''}{sm.has(b.id) ? ' · online' : ''}{stampedSet.value.has(b.id) ? ' · stamped' : ''}</small></button>)}
         {q.trim().length >= 2 && hits.length === 0 && <p class="fine">No booth or exhibitor matches on any of the three levels.</p>}
       </div>
@@ -315,9 +313,9 @@ export function MenuSheet() {
   const m = me.value!, go = (x: typeof modal.value) => () => (modal.value = x);
   const switchRole = async () => { const to = m.cls === 'exhibitor' ? 'visitor' : 'exhibitor'; try { await api.start(to); modal.value = to === 'exhibitor' ? (m.passport ? 'mybooth' : 'card') : null; } catch (e) { fail(e, 'Could not switch'); } };
   return (
-    <Sheet k={m.callsign} title="Menu">
+    <Sheet k={`${m.callsign} · ${online.value} here now`} title="Menu">
       <div class="menu">
-        {drop.value && !drop.value.done && <button onClick={() => { const d = drop.value!; guideTarget.value = { x: d.x, y: d.y, label: d.label }; guideOn.value = true; modal.value = null; }}><strong>★ Booth of the day · +{drop.value.bonus}</strong><small>{drop.value.label} · scan its QR at the real booth today</small></button>}
+        {drop.value && !drop.value.done && <button class="wide" onClick={() => { const d = drop.value!; guideTarget.value = { x: d.x, y: d.y, label: d.label }; guideOn.value = true; modal.value = null; }}><strong>Booth of the day · +{drop.value.bonus}</strong><small>{drop.value.label} · scan its QR at the real booth today</small></button>}
         {m.passport && <a href={m.passport.url} target="_blank" rel="noopener"><strong>My card</strong><small>Your digital business card · link and QR</small></a>}
         {m.passport && !m.docked && <button onClick={go('prize')}><strong>My prize code</strong><small>Show it at the real Booth 8H18B</small></button>}
         {(m.cls === 'exhibitor' || m.hosting.length > 0) && <button onClick={go(m.passport ? 'mybooth' : 'card')}><strong>My booth</strong><small>{m.hosting.length ? m.hosting.join(', ') + ' · QR and leads' : 'Bring it online'}</small></button>}

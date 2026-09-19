@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { Camera } from './ui/common';
 import { OpsTab, ReviewTab } from './crew-ops';
 import qrcode from 'qrcode-generator';
-import './styles.css';
-import './m2.css';
+import './ui.css';
 import './crew.css';
 import './demo/demo.css';
 import { demo, demoState, ensureBackend } from './demo/client';
@@ -34,7 +33,7 @@ function Crew() {
   if (!authed) return <Login onDone={() => setAuthed(true)} />;
   return (
     <main class="console">
-      <header><div class="brand static"><span>lean<b>.x</b>digital</span><i /><span>Crew console</span></div>
+      <header><div class="brand"><span>lean<b>.x</b>digital</span><i /><span>Crew console</span></div>
         <nav>{([['scan', 'Scan'], ['leads', 'Leads'], ['stations', 'Booths'], ['review', 'Review'], ['ops', 'Live'], ['beacons', 'Booth QRs']] as const).map(([t, label]) => <button key={t} class={'chip' + (tab === t ? ' on' : '')} onClick={() => setTab(t)}>{label}</button>)}
           <button class="chip ghost" onClick={() => call('POST', '/api/crew/logout').finally(() => setAuthed(false))}>Sign out</button></nav></header>
       {demo.value && <p class="demobar"><b>Demo mode.</b> This console talks to the demo world inside this browser — the same one the game tab is playing in. Leads, stations and the accounts under review belong to a simulated cast; your own demo player is in there too.</p>}

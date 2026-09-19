@@ -5,10 +5,10 @@
 
 export const ROLES = ['visitor', 'exhibitor'] as const;
 export type Role = (typeof ROLES)[number];
-/** One astronaut, two colours: visitors wear the brand cyan, exhibitors the brand yellow. */
+/** One astronaut, two jackets: visitors blue, exhibitors green — the same blue and green as src/theme.ts. */
 export const ROLE_INFO: Record<Role, { label: string; plural: string; color: number }> = {
-  visitor: { label: 'Visitor', plural: 'Visitors', color: 0x6fe3ff },
-  exhibitor: { label: 'Exhibitor', plural: 'Exhibitors', color: 0xffc629 },
+  visitor: { label: 'Visitor', plural: 'Visitors', color: 0x2457f5 },
+  exhibitor: { label: 'Exhibitor', plural: 'Exhibitors', color: 0x1e9e6a },
 };
 
 /* ---------------- points: fixed, and printed on the rules card ---------------- */

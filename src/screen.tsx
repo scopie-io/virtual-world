@@ -3,14 +3,14 @@
 import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import * as THREE from 'three';
-import './styles.css';
-import './m2.css';
+import './ui.css';
 import './screen.css';
 import './demo/demo.css';
 import { demo, demoState, ensureBackend } from './demo/client';
 import { World, toWorld } from './game/world';
 import { Qr, hex } from './ui/common';
 import { ROLE_INFO } from '../shared/rules';
+import { THEME } from './theme';
 import type { LevelData, ScreenView, StationView } from '../shared/types';
 
 const DECK_SECONDS = 28, MAX_DOTS = 2000;
@@ -21,10 +21,10 @@ async function getJson<T>(path: string): Promise<T | null> {
 
 function startScene(host: HTMLElement, level: LevelData) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.toneMapping = THREE.NoToneMapping;
   host.prepend(renderer.domElement);
-  const world = new World(level, 'high'), camera = new THREE.PerspectiveCamera(38, 1, 0.5, 3000);
-  const dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.9, 12, 10), new THREE.MeshBasicMaterial(), MAX_DOTS), halos = new THREE.InstancedMesh(new THREE.RingGeometry(1.3, 1.8, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }), MAX_DOTS);
+  const world = new World(level), camera = new THREE.PerspectiveCamera(38, 1, 2, 1600);
+  const dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.9, 12, 10), new THREE.MeshBasicMaterial(), MAX_DOTS), halos = new THREE.InstancedMesh(new THREE.RingGeometry(1.3, 1.8, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }), MAX_DOTS);
   dots.count = halos.count = 0; dots.frustumCulled = halos.frustumCulled = false; world.scene.add(dots, halos);
 
   const resize = () => { renderer.setSize(host.clientWidth, host.clientHeight); camera.aspect = host.clientWidth / host.clientHeight; camera.updateProjectionMatrix(); };
@@ -53,7 +53,7 @@ function startScene(host: HTMLElement, level: LevelData) {
       for (const d of list.slice(0, MAX_DOTS)) {
         C.set(d.cls ? ROLE_INFO[d.cls].color : 0xffffff);
         toWorld(d.x, d.y, 1.4, p); M.makeScale(1, 1, 1).setPosition(p); dots.setMatrixAt(n, M); dots.setColorAt(n, C); n++;
-        if (d.deck) { toWorld(d.x, d.y, 0.15, p); M.setPosition(p); halos.setMatrixAt(h, M); halos.setColorAt(h, C.set(0x3ddc84)); h++; } // really on the floor
+        if (d.deck) { toWorld(d.x, d.y, 0.15, p); M.setPosition(p); halos.setMatrixAt(h, M); halos.setColorAt(h, C.set(THEME.gold)); h++; } // really on the floor
       }
       dots.count = n; halos.count = h; dots.instanceMatrix.needsUpdate = halos.instanceMatrix.needsUpdate = true;
       for (const m of [dots, halos]) if (m.instanceColor) m.instanceColor.needsUpdate = true;
@@ -73,7 +73,7 @@ function Screen() {
         if (stop) return;
         const v = await getJson<ScreenView>('/api/crew/screen');
         if (!v) { setAuth(false); return; }
-        setAuth(true); setView(v); scene!.setDots(v.dots); scene!.world.setSectors(v.sectors.sectors); scene!.world.setStorm(v.storm);
+        setAuth(true); setView(v); scene!.setDots(v.dots); 
         const st = await getJson<StationView[]>('/api/stations'); if (st) scene!.world.setStations(st);
       };
       void pull(); setInterval(pull, 4000); setInterval(() => setDeck(scene!.deckLabel()), 1000);
@@ -81,7 +81,7 @@ function Screen() {
     return () => { stop = true; };
   }, []);
 
-  if (!auth) return <div class="splash"><div class="x err">✕</div><p>Sign in on the crew console in this browser first, then reload this page.{demo.value ? ` Demo PIN: ${demoState.value?.crewPin}.` : ''}</p><a class="btn" href="/crew.html">Open the crew console</a></div>;
+  if (!auth) return <div class="splash"><div class="xmark err" /><p>Sign in on the crew console in this browser first, then reload this page.{demo.value ? ` Demo PIN: ${demoState.value?.crewPin}.` : ''}</p><a class="btn" href="/crew.html">Open the crew console</a></div>;
   const v = view;
   return (
     <div class="mc">

@@ -50,10 +50,9 @@ export const CATALOG = {
 
 export const SLOT_LABEL: Record<Slot, string> = { helmet: 'Helmet', visor: 'Visor', smile: 'LED smile', ear: 'Ear ring', top: 'Top', bottom: 'Bottoms', shoes: 'Shoes', carry: 'Carry', trail: 'Trail' };
 
-/** One astronaut, two suits: visitors in the hoodie with a cyan ear ring, exhibitors in the blazer with a yellow one and a tablet. */
-export function defaultAvatar(role: Role | null): AvatarSpec {
-  const base: AvatarSpec = { helmet: 0, visor: 0, smile: 0, ear: 1, top: 0, bottom: 0, shoes: 0, carry: 0, trail: 0 };
-  return role === 'exhibitor' ? { ...base, ear: 0, top: 4, carry: 4 } : base;
+/** One astronaut, one suit. Who they are is said by the jacket colour alone (ROLE_INFO), which the renderer applies. */
+export function defaultAvatar(_role: Role | null): AvatarSpec {
+  return { helmet: 0, visor: 0, smile: 0, ear: 5, top: 0, bottom: 0, shoes: 0, carry: 0, trail: 0 };
 }
 
 /** Options with an unlock were rewards of systems that are switched off; they stay locked. */
